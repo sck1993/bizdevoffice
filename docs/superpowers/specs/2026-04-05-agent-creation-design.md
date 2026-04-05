@@ -613,6 +613,7 @@ volumes:
 | 파일 | 변경 내용 |
 |------|----------|
 | `openclaw-gateway.js` | `_pending`, `_rpcRequest`, `agentsCreate`, `agentsFileSet`, `agentsDelete`, `isConnected`, `_handleMessage` res 처리 추가 |
+| `src/server/agent-state-store.js` | `delete(agentId)` 메서드 추가: `this.states.delete(agentId)` |
 | `gateway-manager.js` | `global.__clawGateway` 싱글턴, `agentFileStore` 복원, `gateway` export |
 | `src/game/config.ts` | `DESK_POSITIONS` → `DESK_SLOTS` 교체 |
 | `src/game/sprites/AgentSprite.ts` | `deskPos` 필드 추가, `getTargetPosition` 수정 |
