@@ -1,11 +1,10 @@
-/**
- * Socket.io event handlers
- * Full implementation in Task 4
- * @param {import("socket.io").Server} io
- * @param {import("socket.io").Socket} socket
- */
+const { agentStateStore } = require("./agent-state-store");
+
 function registerSocketHandlers(io, socket) {
-  // Task 4에서 구현
+  // 접속 시 전체 스냅샷 전송
+  socket.emit("agents:snapshot", {
+    agents: agentStateStore.getAll(),
+  });
 }
 
 module.exports = { registerSocketHandlers };

@@ -3,6 +3,7 @@ const { parse } = require("url");
 const next = require("next");
 const { Server } = require("socket.io");
 const { registerSocketHandlers } = require("./src/server/socket-handlers");
+const { initGateway } = require("./src/server/gateway-manager");
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -17,6 +18,8 @@ app.prepare().then(() => {
   const io = new Server(httpServer, {
     cors: { origin: "*" },
   });
+
+  initGateway(io);
 
   io.on("connection", (socket) => {
     console.log(`[socket] client connected: ${socket.id}`);
