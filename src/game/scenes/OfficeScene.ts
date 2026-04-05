@@ -31,6 +31,9 @@ export class OfficeScene extends Phaser.Scene {
   private propMarkers = new Map<string, Phaser.GameObjects.Container>();
   private gridGraphics: Phaser.GameObjects.Graphics | null = null;
 
+  // ── 소품 비주얼 (일반 모드) ──
+  private propVisuals = new Map<string, Phaser.GameObjects.Graphics>();
+
   // ── 편집 모드 ──
   private isEditMode = false;
   private preEditConfig: OfficeConfig | null = null;
@@ -114,6 +117,7 @@ export class OfficeScene extends Phaser.Scene {
       this.currentConfig = config;
       this.meetingOccupied = config.props.filter((p) => p.type === "meeting_chair").map(() => null);
       this.renderPropMarkers(config);
+      this.renderPropVisuals(config);
       this.updateAllSpritePositions();
     };
 
@@ -440,6 +444,90 @@ export class OfficeScene extends Phaser.Scene {
     };
   }
 
+  // ── PROP VISUALS (일반 모드 가구 그래픽) ─────────────────────────────────────
+
+  private renderPropVisuals(config: OfficeConfig) {
+    this.propVisuals.forEach((g) => g.destroy());
+    this.propVisuals.clear();
+
+    config.props.forEach((prop) => {
+      const { x, y } = tileToPixel(prop.tileCol, prop.tileRow);
+      const g = this.add.graphics();
+      g.setDepth(4);
+
+      if (prop.type === "desk") this.drawDeskAt(g, x, y);
+      else if (prop.type === "meeting_chair") this.drawChairAt(g, x, y);
+      else this.drawSofaAt(g, x, y);
+
+      // 편집 모드 중엔 마커로 대체되므로 숨김
+      if (this.isEditMode) g.setAlpha(0);
+
+      this.propVisuals.set(prop.id, g);
+    });
+  }
+
+  private drawDeskAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 다리
+    g.fillStyle(0x4a3020, 1);
+    g.fillRect(x - 24, y + 12, 8, 10);
+    g.fillRect(x + 16, y + 12, 8, 10);
+    // 책상 측면 (두께감)
+    g.fillStyle(0x3e2610, 1);
+    g.fillRoundedRect(x - 28, y + 6, 56, 8, 2);
+    // 책상 상판
+    g.fillStyle(0x6a4c2e, 1);
+    g.fillRoundedRect(x - 28, y - 14, 56, 22, 4);
+    // 상판 하이라이트
+    g.fillStyle(0x8a6a4e, 0.45);
+    g.fillRoundedRect(x - 26, y - 12, 52, 8, 3);
+    // 모니터 스탠드
+    g.fillStyle(0x1a2030, 1);
+    g.fillRect(x - 2, y - 24, 4, 12);
+    // 모니터 본체
+    g.fillStyle(0x1a2030, 1);
+    g.fillRoundedRect(x - 14, y - 38, 28, 16, 3);
+    // 모니터 화면
+    g.fillStyle(0x3a6aaa, 0.85);
+    g.fillRoundedRect(x - 12, y - 36, 24, 12, 2);
+  }
+
+  private drawChairAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 등받이
+    g.fillStyle(0x1a5a3a, 1);
+    g.fillRoundedRect(x - 12, y - 20, 24, 14, 4);
+    g.fillStyle(0x3a7a5a, 0.4);
+    g.fillRoundedRect(x - 10, y - 18, 20, 6, 3);
+    // 좌석
+    g.fillStyle(0x2a6a4a, 1);
+    g.fillRoundedRect(x - 14, y - 8, 28, 20, 5);
+    g.fillStyle(0x4a8a6a, 0.35);
+    g.fillRoundedRect(x - 12, y - 6, 24, 7, 4);
+    // 다리
+    g.fillStyle(0x1a3a2a, 1);
+    g.fillRect(x - 10, y + 12, 5, 8);
+    g.fillRect(x + 5, y + 12, 5, 8);
+  }
+
+  private drawSofaAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 팔걸이
+    g.fillStyle(0x7a4e28, 1);
+    g.fillRoundedRect(x - 34, y - 16, 10, 28, 4);
+    g.fillRoundedRect(x + 24, y - 16, 10, 28, 4);
+    // 등받이
+    g.fillStyle(0x8a5a30, 1);
+    g.fillRoundedRect(x - 26, y - 18, 52, 16, 5);
+    g.fillStyle(0xaa7a50, 0.3);
+    g.fillRoundedRect(x - 24, y - 16, 48, 7, 4);
+    // 쿠션
+    g.fillStyle(0xaa7a50, 1);
+    g.fillRoundedRect(x - 26, y - 4, 24, 18, 5);
+    g.fillRoundedRect(x + 2, y - 4, 24, 18, 5);
+    // 쿠션 하이라이트
+    g.fillStyle(0xca9a70, 0.4);
+    g.fillRoundedRect(x - 24, y - 2, 20, 6, 4);
+    g.fillRoundedRect(x + 4, y - 2, 20, 6, 4);
+  }
+
   // ── PROP MARKERS ────────────────────────────────────────────────────────────
 
   private renderPropMarkers(config: OfficeConfig) {
@@ -529,6 +617,9 @@ export class OfficeScene extends Phaser.Scene {
     this.isEditMode = true;
     this.preEditConfig = structuredClone(this.currentConfig);
 
+    // 가구 비주얼 숨기고 마커로 대체
+    this.propVisuals.forEach((g) => g.setAlpha(0));
+
     this.showGrid();
 
     this.propMarkers.forEach((container) => {
@@ -586,12 +677,15 @@ export class OfficeScene extends Phaser.Scene {
       this.currentConfig = newConfig;
       this.meetingOccupied = newProps.filter((p) => p.type === "meeting_chair").map(() => null);
       this.updateAllSpritePositions();
+      // 가구 비주얼을 마커의 최종 위치로 재생성
+      this.renderPropVisuals(newConfig);
       EventBus.emit("office:config-updated", newConfig);
     } else {
       // 취소: 저장된 위치로 복원
       if (this.preEditConfig) {
         this.currentConfig = this.preEditConfig;
         this.renderPropMarkers(this.preEditConfig);
+        this.renderPropVisuals(this.preEditConfig);
       }
     }
 
@@ -634,6 +728,9 @@ export class OfficeScene extends Phaser.Scene {
 
     container.destroy();
     this.propMarkers.delete(propId);
+
+    this.propVisuals.get(propId)?.destroy();
+    this.propVisuals.delete(propId);
 
     // currentConfig에서도 제거
     this.currentConfig = {
