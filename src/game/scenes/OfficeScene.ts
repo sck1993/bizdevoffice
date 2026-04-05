@@ -25,6 +25,7 @@ export class OfficeScene extends Phaser.Scene {
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, "background")
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
+    this.drawZones();
     this.registerAnimations();
 
     const handleSnapshot = (data: unknown) => {
@@ -96,6 +97,79 @@ export class OfficeScene extends Phaser.Scene {
       EventBus.off("agent:removed", handleAgentRemoved);
       EventBus.off("connection:lost", handleConnectionLost);
       EventBus.off("connection:restored", handleConnectionRestored);
+    });
+  }
+
+  private drawZones() {
+    this.createZoneCard({
+      x: 48,
+      y: 92,
+      width: 336,
+      height: 256,
+      fill: 0x17324a,
+      stroke: 0x5db7ff,
+      title: "Work Zone",
+      subtitle: "Focus desks",
+    });
+
+    this.createZoneCard({
+      x: 748,
+      y: 118,
+      width: 286,
+      height: 190,
+      fill: 0x203a30,
+      stroke: 0x7ed4a3,
+      title: "Meeting Zone",
+      subtitle: "Shared discussion table",
+    });
+
+    this.createZoneCard({
+      x: 44,
+      y: 438,
+      width: 700,
+      height: 126,
+      fill: 0x43311f,
+      stroke: 0xffb16e,
+      title: "Lounge Zone",
+      subtitle: "Idle and waiting area",
+    });
+  }
+
+  private createZoneCard(config: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    fill: number;
+    stroke: number;
+    title: string;
+    subtitle: string;
+  }) {
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.14);
+    shadow.fillRoundedRect(config.x + 8, config.y + 12, config.width, config.height, 26);
+
+    const panel = this.add.graphics();
+    panel.fillStyle(config.fill, 0.18);
+    panel.lineStyle(2, config.stroke, 0.9);
+    panel.fillRoundedRect(config.x, config.y, config.width, config.height, 26);
+    panel.strokeRoundedRect(config.x, config.y, config.width, config.height, 26);
+
+    const chip = this.add.graphics();
+    chip.fillStyle(config.stroke, 0.2);
+    chip.lineStyle(1, config.stroke, 0.75);
+    chip.fillRoundedRect(config.x + 18, config.y + 16, 118, 32, 16);
+    chip.strokeRoundedRect(config.x + 18, config.y + 16, 118, 32, 16);
+
+    this.add.text(config.x + 30, config.y + 24, config.title, {
+      fontSize: "14px",
+      fontStyle: "bold",
+      color: "#eef7ff",
+    });
+
+    this.add.text(config.x + 20, config.y + 58, config.subtitle, {
+      fontSize: "12px",
+      color: "#d8e4f4",
     });
   }
 
