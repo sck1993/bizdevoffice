@@ -26,8 +26,8 @@
 .claude/
 .superpowers/
 
-# device identity (persisted via Docker volume, not committed)
-/data/
+# data/ is tracked for seed files; runtime writes are fine to commit
+# /data/
 
 # debug
 npm-debug.log*
