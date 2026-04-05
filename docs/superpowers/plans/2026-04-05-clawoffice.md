@@ -1,6 +1,6 @@
 # ClawOffice Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** OpenClaw 하위 에이전트들의 실시간 상태를 2D SD 캐릭터로 시각화하는 모니터링 웹앱 MVP를 구축한다.
 
@@ -38,7 +38,7 @@
 - Create: `package.json`, `tsconfig.json`, `next.config.ts`
 - Create: `src/app/layout.tsx`, `src/app/page.tsx` (스켈레톤)
 
-- [ ] **Step 1: Next.js 프로젝트 생성**
+- [x] **Step 1: Next.js 프로젝트 생성**
 
 ```bash
 cd C:/Users/gunho/Desktop/dev/clawoffice
@@ -48,14 +48,14 @@ npx create-next-app@latest . --typescript --app --no-src-dir --no-tailwind --imp
 `src` 디렉토리 사용 여부 묻는 항목: `Yes`
 ESLint: `Yes`, Tailwind: `No`
 
-- [ ] **Step 2: 의존성 설치**
+- [x] **Step 2: 의존성 설치**
 
 ```bash
 npm install phaser socket.io socket.io-client
 npm install -D @types/node cross-env
 ```
 
-- [ ] **Step 3: next.config.ts — standalone 출력 설정**
+- [x] **Step 3: next.config.ts — standalone 출력 설정**
 
 `next.config.ts`를 다음으로 교체:
 
@@ -69,13 +69,13 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-- [ ] **Step 4: 폴더 구조 생성**
+- [x] **Step 4: 폴더 구조 생성**
 
 ```bash
 mkdir -p src/server src/game/scenes src/game/sprites src/components public/assets/background public/assets/characters
 ```
 
-- [ ] **Step 5: 개발 서버 실행 확인**
+- [x] **Step 5: 개발 서버 실행 확인**
 
 ```bash
 npm run dev
@@ -83,7 +83,7 @@ npm run dev
 
 `http://localhost:3000` 접속 → Next.js 기본 페이지 표시되면 성공.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git init
@@ -101,7 +101,7 @@ git commit -m "feat: initialize Next.js project with Phaser3 and Socket.io"
 
 Socket.io는 Next.js API Routes와 통합하기 어렵기 때문에 커스텀 Node.js 서버로 분리한다. [deskrpg의 server.js 패턴 참고](https://github.com/dandacompany/deskrpg/blob/main/server.js)
 
-- [ ] **Step 1: 공유 타입 정의**
+- [x] **Step 1: 공유 타입 정의**
 
 `src/types/agent.ts` 생성:
 
@@ -126,7 +126,7 @@ export interface AgentStateChanged {
 }
 ```
 
-- [ ] **Step 2: server.js 작성**
+- [x] **Step 2: server.js 작성**
 
 프로젝트 루트에 `server.js` 생성:
 
@@ -166,7 +166,7 @@ app.prepare().then(() => {
 });
 ```
 
-- [ ] **Step 3: package.json scripts 수정**
+- [x] **Step 3: package.json scripts 수정**
 
 `package.json`의 `scripts`를 다음으로 업데이트:
 
@@ -178,7 +178,7 @@ app.prepare().then(() => {
 }
 ```
 
-- [ ] **Step 4: socket-handlers.ts 스텁 생성**
+- [x] **Step 4: socket-handlers.ts 스텁 생성**
 
 `src/server/socket-handlers.ts` 생성 (아직 빈 껍데기):
 
@@ -190,7 +190,7 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
 }
 ```
 
-- [ ] **Step 5: 서버 실행 확인**
+- [x] **Step 5: 서버 실행 확인**
 
 ```bash
 npm run dev
@@ -198,7 +198,7 @@ npm run dev
 
 `http://localhost:3000` → 정상 표시되면 성공.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add server.js src/types/agent.ts src/server/socket-handlers.ts package.json
@@ -218,7 +218,7 @@ git commit -m "feat: add custom server with Socket.io integration"
 - Create: `src/server/openclaw-gateway.js`
 - Create: `src/server/gateway-manager.js`
 
-- [ ] **Step 1: agent-state-store.js 작성**
+- [x] **Step 1: agent-state-store.js 작성**
 
 `src/server/agent-state-store.js` 생성:
 
@@ -262,7 +262,7 @@ class AgentStateStore {
 module.exports = { agentStateStore: new AgentStateStore() };
 ```
 
-- [ ] **Step 2: openclaw-gateway.js 작성**
+- [x] **Step 2: openclaw-gateway.js 작성**
 
 `src/server/openclaw-gateway.js` 생성.
 
@@ -332,7 +332,7 @@ module.exports = { OpenClawGateway };
 
 > **주의:** `_handleMessage` 내부의 실제 파싱 로직은 OpenClaw WebSocket 연결 후 실제 메시지 포맷 확인이 필요하다. deskrpg의 `chatStream` 파싱 로직을 참고할 것.
 
-- [ ] **Step 3: gateway-manager.js 작성**
+- [x] **Step 3: gateway-manager.js 작성**
 
 `src/server/gateway-manager.js` 생성 — gateway와 state store를 연결:
 
@@ -377,7 +377,7 @@ function initGateway(socketIo) {
 module.exports = { initGateway };
 ```
 
-- [ ] **Step 4: server.js에서 gateway 초기화**
+- [x] **Step 4: server.js에서 gateway 초기화**
 
 `server.js`의 `io.on("connection", ...)` 앞에 추가:
 
@@ -388,7 +388,7 @@ const { initGateway } = require("./src/server/gateway-manager");
 initGateway(io);
 ```
 
-- [ ] **Step 5: .env.local 작성**
+- [x] **Step 5: .env.local 작성**
 
 ```bash
 echo "OPENCLAW_URL=ws://localhost:3000" > .env.local
@@ -396,7 +396,7 @@ echo "OPENCLAW_URL=ws://localhost:3000" > .env.local
 
 실제 VPS 배포 시에는 `ws://openclaw:3000`으로 변경.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add src/server/ .env.local
@@ -411,7 +411,7 @@ git commit -m "feat: add agent state store and OpenClaw gateway manager"
 - Modify: `src/server/socket-handlers.js` (세션 1에서 .js로 생성됨)
 - Modify: `server.js`
 
-- [ ] **Step 1: socket-handlers.js 구현**
+- [x] **Step 1: socket-handlers.js 구현**
 
 `src/server/socket-handlers.js`를 다음으로 교체:
 
@@ -428,7 +428,7 @@ function registerSocketHandlers(io, socket) {
 module.exports = { registerSocketHandlers };
 ```
 
-- [ ] **Step 2: server.js에서 gateway 초기화 추가**
+- [x] **Step 2: server.js에서 gateway 초기화 추가**
 
 `server.js` 상단 require 블록에 추가:
 
@@ -442,7 +442,7 @@ const { initGateway } = require("./src/server/gateway-manager");
 initGateway(io);
 ```
 
-- [ ] **Step 3: Socket.io 클라이언트로 연결 테스트**
+- [x] **Step 3: Socket.io 클라이언트로 연결 테스트**
 
 별도 터미널에서:
 
@@ -456,7 +456,7 @@ s.on('agents:snapshot', (d) => { console.log('snapshot:', JSON.stringify(d, null
 
 Expected: `agents:snapshot` 이벤트에 5개 에이전트 상태 출력.
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add src/server/socket-handlers.js src/server/gateway-manager.js src/server/agent-state-store.js server.js .env.local
@@ -471,7 +471,7 @@ git commit -m "feat: implement socket handlers with agent snapshot on connect"
 - Create: `src/game/EventBus.ts`
 - Create: `src/game/config.ts`
 
-- [ ] **Step 1: EventBus.ts 작성**
+- [x] **Step 1: EventBus.ts 작성**
 
 `src/game/EventBus.ts` 생성:
 
@@ -498,7 +498,7 @@ class SimpleEventEmitter {
 export const EventBus = new SimpleEventEmitter();
 ```
 
-- [ ] **Step 2: config.ts 작성**
+- [x] **Step 2: config.ts 작성**
 
 `src/game/config.ts` 생성.
 
@@ -541,7 +541,7 @@ export const LOUNGE_SEATS: { x: number; y: number }[] = [
 ];
 ```
 
-- [ ] **Step 3: 커밋**
+- [x] **Step 3: 커밋**
 
 ```bash
 git add src/game/EventBus.ts src/game/config.ts
@@ -557,7 +557,7 @@ git commit -m "feat: add game EventBus and position config"
 
 Phaser3의 `Phaser.GameObjects.Sprite`를 상속하여 상태 관리, tween 이동, 애니메이션 재생, 툴팁을 담당한다.
 
-- [ ] **Step 1: AgentSprite.ts 작성**
+- [x] **Step 1: AgentSprite.ts 작성**
 
 `src/game/sprites/AgentSprite.ts` 생성:
 
@@ -689,7 +689,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 }
 ```
 
-- [ ] **Step 2: 커밋**
+- [x] **Step 2: 커밋**
 
 ```bash
 git add src/game/sprites/AgentSprite.ts
@@ -703,7 +703,7 @@ git commit -m "feat: add AgentSprite class with tween movement and state managem
 **Files:**
 - Create: `src/game/scenes/OfficeScene.ts`
 
-- [ ] **Step 1: OfficeScene.ts 작성**
+- [x] **Step 1: OfficeScene.ts 작성**
 
 `src/game/scenes/OfficeScene.ts` 생성:
 
@@ -807,7 +807,7 @@ export class OfficeScene extends Phaser.Scene {
 }
 ```
 
-- [ ] **Step 2: 커밋**
+- [x] **Step 2: 커밋**
 
 ```bash
 git add src/game/scenes/OfficeScene.ts
@@ -823,7 +823,7 @@ git commit -m "feat: implement OfficeScene with agent spawning and state transit
 - Create: `src/components/DisconnectBanner.tsx`
 - Modify: `src/app/page.tsx`
 
-- [ ] **Step 1: DisconnectBanner.tsx 작성**
+- [x] **Step 1: DisconnectBanner.tsx 작성**
 
 `src/components/DisconnectBanner.tsx` 생성:
 
@@ -844,7 +844,7 @@ export function DisconnectBanner({ visible }: { visible: boolean }) {
 }
 ```
 
-- [ ] **Step 2: GameWrapper.tsx 작성**
+- [x] **Step 2: GameWrapper.tsx 작성**
 
 `src/components/GameWrapper.tsx` 생성:
 
@@ -916,7 +916,7 @@ export function GameWrapper() {
 }
 ```
 
-- [ ] **Step 3: page.tsx 작성**
+- [x] **Step 3: page.tsx 작성**
 
 `src/app/page.tsx`를 다음으로 교체:
 
@@ -932,7 +932,7 @@ export default function HomePage() {
 }
 ```
 
-- [ ] **Step 4: layout.tsx 글로벌 스타일 정리**
+- [x] **Step 4: layout.tsx 글로벌 스타일 정리**
 
 `src/app/layout.tsx`:
 
@@ -948,7 +948,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-- [ ] **Step 5: 플레이스홀더 에셋 생성**
+- [x] **Step 5: 플레이스홀더 에셋 생성**
 
 배경 이미지와 스프라이트시트가 없으면 Phaser가 에러를 낸다. Node.js로 최소 PNG를 생성한다:
 
@@ -965,7 +965,7 @@ console.log('placeholder assets created');
 
 > 실제 에셋은 Task 10에서 교체한다. 이 플레이스홀더로 Phaser 씬이 에러 없이 로드되는지 확인 가능하다.
 
-- [ ] **Step 6: 통합 확인**
+- [x] **Step 6: 통합 확인**
 
 ```bash
 npm run dev
@@ -973,7 +973,7 @@ npm run dev
 
 `http://localhost:3000` → Phaser 캔버스 표시, 브라우저 콘솔에 Socket.io 연결 확인.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add src/components/ src/app/
@@ -989,7 +989,7 @@ git commit -m "feat: add GameWrapper with Socket.io client and Phaser3 integrati
 - Create: `docker-compose.yml`
 - Create: `.dockerignore`
 
-- [ ] **Step 1: .dockerignore 작성**
+- [x] **Step 1: .dockerignore 작성**
 
 ```
 node_modules
@@ -999,7 +999,7 @@ node_modules
 docs
 ```
 
-- [ ] **Step 2: Dockerfile 작성**
+- [x] **Step 2: Dockerfile 작성**
 
 ```dockerfile
 FROM node:20-alpine AS base
@@ -1028,7 +1028,7 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-- [ ] **Step 3: docker-compose.yml 작성**
+- [x] **Step 3: docker-compose.yml 작성**
 
 프로젝트 루트(clawoffice 디렉토리 상위)에 작성:
 
@@ -1054,7 +1054,7 @@ services:
       - openclaw
 ```
 
-- [ ] **Step 4: Docker 빌드 확인**
+- [x] **Step 4: Docker 빌드 확인**
 
 ```bash
 npm run build
@@ -1064,7 +1064,7 @@ docker run -p 3001:3000 -e OPENCLAW_URL=ws://host.docker.internal:3000 clawoffic
 
 `http://localhost:3001` 접속 확인.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add Dockerfile docker-compose.yml .dockerignore
