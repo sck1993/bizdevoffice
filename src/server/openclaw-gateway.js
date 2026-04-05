@@ -271,7 +271,39 @@ class OpenClawGateway extends EventEmitter {
       return;
     }
 
-    // All other messages — log full payload and emit
+    // Health event — emit for agent store sync
+    if (msg?.type === "event" && msg?.event === "health") {
+      console.log("[gateway] health:", JSON.stringify(msg.payload).slice(0, 300));
+      this.emit("health", msg.payload);
+      return;
+    }
+
+    // Agent activity events — infer working/idle state from chat/agent stream events
+    if (msg?.type === "event" && msg?.event === "chat" && msg?.payload) {
+      const p = msg.payload;
+      const agentId = p.agentId ?? p.sessionKey?.split(":")?.[1];
+      if (agentId) {
+        if (p.state === "active" || p.state === "running") {
+          this.emit("agent:working", { agentId, taskTitle: p.title ?? p.sessionKey });
+        } else if (p.state === "final" || p.state === "idle" || p.state === "done") {
+          this.emit("agent:idle", { agentId });
+        }
+      }
+      console.log("[gateway] chat event:", JSON.stringify(msg).slice(0, 300));
+      return;
+    }
+
+    if (msg?.type === "event" && msg?.event === "agent" && msg?.payload) {
+      const p = msg.payload;
+      const agentId = p.agentId ?? p.sessionKey?.split(":")?.[1];
+      if (agentId && p.stream === "assistant") {
+        this.emit("agent:working", { agentId, taskTitle: p.sessionKey });
+      }
+      console.log("[gateway] agent event:", JSON.stringify(msg).slice(0, 300));
+      return;
+    }
+
+    // Unrecognised messages — log for discovery
     console.log("[gateway] message:", JSON.stringify(msg));
     this.emit("message", msg);
   }

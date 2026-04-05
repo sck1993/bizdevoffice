@@ -20,19 +20,28 @@ function isSelfReferentialGatewayUrl(url) {
   }
 }
 
+/**
+ * Sync agent store from a health event payload.
+ * Adds new agents (idle), leaves existing agents' states untouched.
+ */
+function syncAgentsFromHealth(payload) {
+  const agents = payload?.agents;
+  if (!Array.isArray(agents)) return;
+
+  for (const a of agents) {
+    const agentId = a.agentId;
+    const name = a.name ?? agentId;
+    if (!agentStateStore.get(agentId)) {
+      agentStateStore.set(agentId, { agentId, name, state: "idle" });
+      console.log("[gateway] registered agent from health:", agentId, name);
+    }
+  }
+}
+
 function initGateway(socketIo) {
   io = socketIo;
 
-  // 개발용 더미 에이전트 등록 (실제 agentId로 교체 필요 — Task 10)
-  const AGENTS = [
-    { agentId: "agent-a", name: "Agent A" },
-    { agentId: "agent-b", name: "Agent B" },
-    { agentId: "agent-c", name: "Agent C" },
-    { agentId: "agent-d", name: "Agent D" },
-    { agentId: "agent-e", name: "Agent E" },
-  ];
-  AGENTS.forEach((a) => agentStateStore.set(a.agentId, { ...a, state: "idle" }));
-
+  // Agent state transitions from gateway events
   gateway.on("agent:working", ({ agentId, taskTitle }) => {
     agentStateStore.updateStatus(agentId, "working", taskTitle);
     io?.emit("agent:state-changed", { agentId, state: "working", taskTitle });
@@ -48,15 +57,20 @@ function initGateway(socketIo) {
     io?.emit("agent:state-changed", { agentId, state: "meeting" });
   });
 
+  // Populate agent store from health events (authoritative agent list)
+  gateway.on("health", (payload) => {
+    syncAgentsFromHealth(payload);
+    // Push updated snapshot to all connected clients
+    io?.emit("agents:snapshot", { agents: agentStateStore.getAll() });
+  });
+
   if (!process.env.OPENCLAW_URL) {
-    console.warn("[gateway] OPENCLAW_URL is not set. Using dummy agents until a real websocket endpoint is configured.");
+    console.warn("[gateway] OPENCLAW_URL is not set — using dummy agents.");
     return;
   }
 
   if (isSelfReferentialGatewayUrl(process.env.OPENCLAW_URL)) {
-    console.warn(
-      "[gateway] OPENCLAW_URL points at this app server. Skipping websocket connect to avoid a self-loop."
-    );
+    console.warn("[gateway] OPENCLAW_URL points at this server — skipping to avoid self-loop.");
     return;
   }
 
