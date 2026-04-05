@@ -278,28 +278,32 @@ class OpenClawGateway extends EventEmitter {
       return;
     }
 
-    // Agent activity events — infer working/idle state from chat/agent stream events
-    if (msg?.type === "event" && msg?.event === "chat" && msg?.payload) {
+    // Agent activity events
+    // payload.stream = "lifecycle" → phase start/end drive working/idle transitions
+    // payload.stream = "assistant" → streaming text (agent is working)
+    if (msg?.type === "event" && msg?.event === "agent" && msg?.payload) {
       const p = msg.payload;
-      const agentId = p.agentId ?? p.sessionKey?.split(":")?.[1];
+      const agentId = p.sessionKey?.split(":")?.[1] ?? p.agentId;
       if (agentId) {
-        if (p.state === "active" || p.state === "running") {
-          this.emit("agent:working", { agentId, taskTitle: p.title ?? p.sessionKey });
-        } else if (p.state === "final" || p.state === "idle" || p.state === "done") {
-          this.emit("agent:idle", { agentId });
+        if (p.stream === "lifecycle") {
+          if (p.data?.phase === "start") {
+            console.log("[gateway] agent working:", agentId, "run:", p.runId);
+            this.emit("agent:working", { agentId, taskTitle: p.sessionKey });
+          } else if (p.data?.phase === "end") {
+            console.log("[gateway] agent idle:", agentId);
+            this.emit("agent:idle", { agentId });
+          }
+        }
+        // assistant delta events are frequent — emit working but don't log each one
+        if (p.stream === "assistant") {
+          this.emit("agent:working", { agentId, taskTitle: p.sessionKey });
         }
       }
-      console.log("[gateway] chat event:", JSON.stringify(msg).slice(0, 300));
       return;
     }
 
-    if (msg?.type === "event" && msg?.event === "agent" && msg?.payload) {
-      const p = msg.payload;
-      const agentId = p.agentId ?? p.sessionKey?.split(":")?.[1];
-      if (agentId && p.stream === "assistant") {
-        this.emit("agent:working", { agentId, taskTitle: p.sessionKey });
-      }
-      console.log("[gateway] agent event:", JSON.stringify(msg).slice(0, 300));
+    // Heartbeat — suppress noisy logging
+    if (msg?.type === "event" && msg?.event === "heartbeat") {
       return;
     }
 
