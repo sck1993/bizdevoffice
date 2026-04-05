@@ -5,11 +5,13 @@ import type { Socket } from "socket.io-client";
 import { io } from "socket.io-client";
 import { AgentPanel } from "./AgentPanel";
 import { DisconnectBanner } from "./DisconnectBanner";
+import { OfficeEditorOverlay } from "./OfficeEditorOverlay";
 import { EventBus } from "../game/EventBus";
 
 export function GameWrapper() {
   const gameRef = useRef<HTMLDivElement>(null);
   const [disconnected, setDisconnected] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -64,6 +66,11 @@ export function GameWrapper() {
         console.log("[socket] agent:removed", data);
         EventBus.emit("agent:removed", data);
       });
+
+      socket.on("office:config", (data) => {
+        console.log("[socket] office:config", data);
+        EventBus.emit("office:config", data);
+      });
     };
 
     void init();
@@ -76,34 +83,78 @@ export function GameWrapper() {
   }, []);
 
   return (
-    <>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        gap: 12,
+        padding: 12,
+        alignItems: "stretch",
+        boxSizing: "border-box",
+      }}
+    >
       <DisconnectBanner visible={disconnected} />
+
+      {/* 오피스 캔버스 — 남은 공간 전부 차지 */}
       <div
         style={{
-          width: "100%",
-          maxWidth: 1680,
-          margin: "0 auto",
-          display: "flex",
-          gap: 24,
-          alignItems: "flex-start",
-          justifyContent: "center",
-          flexWrap: "wrap",
+          flex: "1 1 0",
+          minWidth: 0,
+          borderRadius: 20,
+          overflow: "hidden",
+          boxShadow: "0 24px 80px rgba(0, 0, 0, 0.45)",
+          position: "relative",
         }}
       >
         <div
-          style={{
-            flex: "1 1 960px",
-            minWidth: 320,
-            maxWidth: 1280,
-            borderRadius: 28,
-            overflow: "hidden",
-            boxShadow: "0 24px 80px rgba(0, 0, 0, 0.35)",
-          }}
-        >
-          <div ref={gameRef} />
-        </div>
+          ref={gameRef}
+          style={{ width: "100%", height: "100%" }}
+        />
+
+        {/* 오피스 편집 버튼 */}
+        {!editMode && (
+          <button
+            onClick={() => {
+              setEditMode(true);
+              EventBus.emit("office:edit-start");
+            }}
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              zIndex: 15,
+              padding: "5px 12px",
+              borderRadius: 8,
+              border: "1px solid rgba(74, 158, 255, 0.5)",
+              backgroundColor: "rgba(10, 14, 26, 0.8)",
+              color: "#88c4ff",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            오피스 편집
+          </button>
+        )}
+
+        {editMode && (
+          <OfficeEditorOverlay onClose={() => setEditMode(false)} />
+        )}
+      </div>
+
+      {/* 에이전트 패널 — 고정 너비 사이드바 */}
+      <div
+        style={{
+          flexShrink: 0,
+          width: 340,
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
         <AgentPanel />
       </div>
-    </>
+    </div>
   );
 }

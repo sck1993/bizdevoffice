@@ -2,30 +2,26 @@
 export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 640;
 
-// Row 1 / Row 2 경계 Y 좌표
-export const ROW_BOUNDARY_Y = GAME_HEIGHT * 0.52; // 333px
+// 바닥 영역 전체를 80×80 타일로 분할 (편집 모드 스냅 기준)
+export const TILE_GRID = {
+  originX: 44,
+  originY: 134,
+  tileW: 80,
+  tileH: 80,
+  cols: 15,
+  rows: 6,
+} as const;
 
-export const DESK_SLOTS: { x: number; y: number }[] = [
-  { x: 160, y: 210 },
-  { x: 320, y: 210 },
-  { x: 160, y: 295 },
-  { x: 320, y: 295 },
-];
+export function tileToPixel(col: number, row: number): { x: number; y: number } {
+  return {
+    x: TILE_GRID.originX + col * TILE_GRID.tileW + TILE_GRID.tileW / 2,
+    y: TILE_GRID.originY + row * TILE_GRID.tileH + TILE_GRID.tileH / 2,
+  };
+}
 
-// 미팅 테이블 좌석 (최대 5개)
-export const MEETING_SEATS: { x: number; y: number }[] = [
-  { x: 850, y: 195 },
-  { x: 950, y: 195 },
-  { x: 850, y: 265 },
-  { x: 950, y: 265 },
-  { x: 900, y: 230 },
-];
-
-// 라운지 소파 위치 (idle 에이전트 배치)
-export const LOUNGE_SEATS: { x: number; y: number }[] = [
-  { x: 130, y: 520 },
-  { x: 220, y: 520 },
-  { x: 420, y: 520 },
-  { x: 510, y: 520 },
-  { x: 700, y: 520 },
-];
+export function pixelToTile(x: number, y: number): { col: number; row: number } {
+  return {
+    col: Math.max(0, Math.min(TILE_GRID.cols - 1, Math.floor((x - TILE_GRID.originX) / TILE_GRID.tileW))),
+    row: Math.max(0, Math.min(TILE_GRID.rows - 1, Math.floor((y - TILE_GRID.originY) / TILE_GRID.tileH))),
+  };
+}

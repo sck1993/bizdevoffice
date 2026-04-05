@@ -1,21 +1,26 @@
 import * as Phaser from "phaser";
 import { AgentStatus } from "../../types/agent";
-import { LOUNGE_SEATS, MEETING_SEATS } from "../config";
 
 interface AgentSpriteConfig {
   scene: Phaser.Scene;
   agentId: string;
   name: string;
   initialStatus: AgentStatus;
-  loungeIndex: number; // 라운지 좌석 인덱스
+  loungeIndex: number;
+  loungeSeats: { x: number; y: number }[];
+  meetingSeats: { x: number; y: number }[];
   deskPos?: { x: number; y: number };
+  deskIndex?: number;
 }
 
 export class AgentSprite extends Phaser.GameObjects.Sprite {
   agentId: string;
   agentName: string;
   currentStatus: AgentStatus;
+  deskIndex: number;
   private loungeIndex: number;
+  private loungeSeats: { x: number; y: number }[];
+  private meetingSeats: { x: number; y: number }[];
   private tooltip: Phaser.GameObjects.Text;
   private label: Phaser.GameObjects.Text;
   private meetingSeatIndex = -1;
@@ -23,14 +28,17 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private deskPos?: { x: number; y: number };
 
   constructor(config: AgentSpriteConfig) {
-    const loungePos = LOUNGE_SEATS[config.loungeIndex] ?? LOUNGE_SEATS[0];
+    const loungePos = config.loungeSeats[config.loungeIndex] ?? config.loungeSeats[0] ?? { x: 130, y: 520 };
     super(config.scene, loungePos.x, loungePos.y, "character", 0);
 
     this.agentId = config.agentId;
     this.agentName = config.name;
     this.currentStatus = config.initialStatus;
     this.loungeIndex = config.loungeIndex;
+    this.loungeSeats = config.loungeSeats;
+    this.meetingSeats = config.meetingSeats;
     this.deskPos = config.deskPos;
+    this.deskIndex = config.deskIndex ?? -1;
 
     config.scene.add.existing(this as unknown as Phaser.GameObjects.GameObject);
     this.setInteractive();
@@ -70,14 +78,12 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
   private getTargetPosition(state: AgentStatus): { x: number; y: number } {
     switch (state) {
-      case "working": {
-        return this.deskPos ?? LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
-      }
-      case "meeting": {
-        return MEETING_SEATS[this.meetingSeatIndex] ?? LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
-      }
+      case "working":
+        return this.deskPos ?? this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
+      case "meeting":
+        return this.meetingSeats[this.meetingSeatIndex] ?? this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
       default:
-        return LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
+        return this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
     }
   }
 
@@ -97,6 +103,17 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   setAgentName(name: string) {
     this.agentName = name;
     this.label.setText(name);
+  }
+
+  updatePositionRefs(
+    loungeSeats: { x: number; y: number }[],
+    meetingSeats: { x: number; y: number }[],
+    deskPos?: { x: number; y: number }
+  ) {
+    this.loungeSeats = loungeSeats;
+    this.meetingSeats = meetingSeats;
+    if (deskPos !== undefined) this.deskPos = deskPos;
+    this.moveToTarget();
   }
 
   private moveToTarget() {
@@ -129,5 +146,11 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   dim(active: boolean) {
     this.setAlpha(active ? 0.4 : 1.0);
     this.label.setAlpha(active ? 0.4 : 1.0);
+  }
+
+  override destroy(fromScene?: boolean) {
+    this.label.destroy();
+    this.tooltip.destroy();
+    super.destroy(fromScene);
   }
 }

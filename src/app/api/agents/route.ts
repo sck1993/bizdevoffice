@@ -8,6 +8,7 @@ import {
   withLock,
 } from "../../../server/agent-file-store";
 import { gateway } from "../../../server/gateway-manager";
+import { getDeskCount } from "../../../server/office-file-store";
 import { AgentRouteError, clawGlobal, isTimeoutError, jsonError } from "@/lib/route-utils";
 
 export const runtime = "nodejs";
@@ -59,6 +60,10 @@ export async function POST(request: Request) {
       }
 
       const existing = loadAll() as AgentConfig[];
+      const deskCount = getDeskCount();
+      if (existing.length >= deskCount) {
+        throw new AgentRouteError(409, `에이전트는 최대 ${deskCount}명까지 생성 가능합니다`);
+      }
       const agentId = toAgentId(name, new Set(existing.map((item) => item.agentId)));
       const deskIndex = getNextDeskIndex(existing);
       const createdAt = new Date().toISOString();

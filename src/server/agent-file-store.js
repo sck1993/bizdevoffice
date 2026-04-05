@@ -4,7 +4,7 @@ const path = require("path");
 const DATA_DIR = path.join(process.cwd(), "data");
 const AGENTS_FILE = path.join(DATA_DIR, "agents.json");
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-const DESK_SLOT_COUNT = 4; // Must match DESK_SLOTS.length in src/game/config.ts
+const DESK_SLOT_COUNT = 4; // Must match desk prop count in data/office.json (see office-file-store.js getDeskCount)
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
