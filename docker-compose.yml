@@ -1,8 +1,6 @@
 services:
   clawoffice:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/sck1993/bizdevoffice:latest
     restart: unless-stopped
     ports:
       - "${CLAWOFFICE_PORT:-3001}:3000"
