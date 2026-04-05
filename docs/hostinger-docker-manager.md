@@ -1,6 +1,6 @@
 # Hostinger Docker Manager Deployment
 
-Use `docker-compose.hostinger.yml` when deploying this repository through Hostinger Docker Manager from a GitHub URL.
+Use `docker-compose.yml` when deploying this repository through Hostinger Docker Manager from a GitHub URL.
 
 ## Defaults baked into the compose file
 
@@ -16,8 +16,8 @@ These defaults match the current VPS state that was inspected from Docker:
 
 ## Recommended Hostinger setup
 
-1. Deploy from the repository using the compose file:
-   `docker-compose.hostinger.yml`
+1. Deploy from the repository using the default compose file:
+   `docker-compose.yml`
 2. If Hostinger asks for environment variables, set only when overriding defaults:
    `OPENCLAW_DOCKER_NETWORK`
    `OPENCLAW_URL`
@@ -33,3 +33,9 @@ These defaults match the current VPS state that was inspected from Docker:
 - Confirm the OpenClaw websocket path if it is not the root websocket endpoint.
 - Provide real gateway message samples so `_handleMessage()` can be completed.
 - Replace placeholder art assets and tune scene coordinates.
+
+## Local-only compose
+
+If you ever want the old two-service setup for local experiments, use:
+
+- `docker-compose.local.yml`

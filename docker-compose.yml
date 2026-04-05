@@ -1,18 +1,19 @@
 services:
-  openclaw:
-    image: openclaw/openclaw:latest
-    restart: unless-stopped
-
   clawoffice:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "${CLAWOFFICE_PORT:-3001}:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
-      OPENCLAW_URL: ws://openclaw:3000
-    depends_on:
-      - openclaw
+      OPENCLAW_URL: ${OPENCLAW_URL:-ws://openclaw:61744}
+    networks:
+      - openclaw_external
+
+networks:
+  openclaw_external:
+    external: true
+    name: ${OPENCLAW_DOCKER_NETWORK:-openclaw-9cv4_default}
