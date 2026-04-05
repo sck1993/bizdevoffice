@@ -9,6 +9,9 @@ class OpenClawGateway extends EventEmitter {
     this.reconnectDelay = 5000;
     this.reconnectTimer = null;
     this.shouldReconnect = true;
+    this.protocolVersion = 3;
+    this.connectRequestId = "clawoffice-connect";
+    this.gatewayToken = process.env.OPENCLAW_GATEWAY_TOKEN;
   }
 
   connect() {
@@ -62,6 +65,23 @@ class OpenClawGateway extends EventEmitter {
   }
 
   _handleMessage(msg) {
+    if (msg?.type === "event" && msg?.event === "connect.challenge") {
+      this._sendConnectRequest();
+      return;
+    }
+
+    if (msg?.type === "res" && msg?.id === this.connectRequestId) {
+      if (msg?.ok) {
+        console.log("[gateway] connect handshake accepted");
+      } else {
+        console.error(
+          "[gateway] connect handshake rejected:",
+          JSON.stringify(msg?.error ?? msg?.payload ?? msg)
+        );
+      }
+      return;
+    }
+
     // OpenClaw 프로토콜 확인 후 아래 이벤트 emit
     // task in_progress 감지 시:
     //   this.emit("agent:working", { agentId, taskTitle })
@@ -73,6 +93,40 @@ class OpenClawGateway extends EventEmitter {
     // ⚠️ 실제 OpenClaw 메시지 포맷은 연결 후 확인 필요.
     //    deskrpg의 openclaw-gateway.js chatStream 파싱 로직 참고.
     console.log("[gateway] message:", JSON.stringify(msg).slice(0, 100));
+  }
+
+  _sendConnectRequest() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    const params = {
+      minProtocol: this.protocolVersion,
+      maxProtocol: this.protocolVersion,
+      client: {
+        id: "clawoffice-monitor",
+        version: "0.1.0",
+        platform: "linux",
+        mode: "backend",
+      },
+      role: "operator",
+      scopes: ["operator.read", "operator.write"],
+      locale: "en-US",
+      userAgent: "clawoffice-monitor/0.1.0",
+    };
+
+    if (this.gatewayToken) {
+      params.auth = {
+        token: this.gatewayToken,
+      };
+    }
+
+    this.ws.send(
+      JSON.stringify({
+        type: "req",
+        id: this.connectRequestId,
+        method: "connect",
+        params,
+      })
+    );
   }
 
   disconnect() {

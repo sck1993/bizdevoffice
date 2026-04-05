@@ -22,6 +22,7 @@ These defaults match the current VPS state that was inspected from Docker:
    `OPENCLAW_DOCKER_NETWORK`
    `OPENCLAW_URL`
    `CLAWOFFICE_PORT`
+   `OPENCLAW_GATEWAY_TOKEN`
 3. After deployment, open the container logs and confirm:
    `> Ready on http://localhost:3000`
    `[gateway] connected to OpenClaw`
@@ -31,6 +32,7 @@ These defaults match the current VPS state that was inspected from Docker:
 ## What still requires manual follow-up
 
 - Confirm the OpenClaw websocket path if it is not the root websocket endpoint.
+- Supply an OpenClaw gateway token if the server rejects tokenless `connect` requests.
 - Provide real gateway message samples so `_handleMessage()` can be completed.
 - Replace placeholder art assets and tune scene coordinates.
 

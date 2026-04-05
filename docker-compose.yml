@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       OPENCLAW_URL: ${OPENCLAW_URL:-ws://openclaw:61744}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
     networks:
       - openclaw_external
 
