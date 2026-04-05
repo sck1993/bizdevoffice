@@ -1,7 +1,11 @@
 const { agentStateStore } = require("./agent-state-store");
 const { OpenClawGateway } = require("./openclaw-gateway");
+const agentFileStore = require("./agent-file-store");
 
-const gateway = new OpenClawGateway(process.env.OPENCLAW_URL);
+if (!global.__clawGateway) {
+  global.__clawGateway = new OpenClawGateway(process.env.OPENCLAW_URL);
+}
+const gateway = global.__clawGateway;
 let io = null;
 
 function isSelfReferentialGatewayUrl(url) {
@@ -32,7 +36,7 @@ function syncAgentsFromHealth(payload) {
     const agentId = a.agentId;
     const name = a.name ?? agentId;
     if (!agentStateStore.get(agentId)) {
-      agentStateStore.set(agentId, { agentId, name, state: "idle" });
+      agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex: -1 });
       console.log("[gateway] registered agent from health:", agentId, name);
     }
   }
@@ -40,6 +44,16 @@ function syncAgentsFromHealth(payload) {
 
 function initGateway(socketIo) {
   io = socketIo;
+
+  const saved = agentFileStore.loadAll();
+  for (const agent of saved) {
+    agentStateStore.set(agent.agentId, {
+      agentId: agent.agentId,
+      name: agent.name,
+      state: "idle",
+      deskIndex: agent.deskIndex,
+    });
+  }
 
   // Agent state transitions from gateway events
   gateway.on("agent:working", ({ agentId, taskTitle }) => {
@@ -77,4 +91,4 @@ function initGateway(socketIo) {
   gateway.connect();
 }
 
-module.exports = { initGateway };
+module.exports = { initGateway, gateway };

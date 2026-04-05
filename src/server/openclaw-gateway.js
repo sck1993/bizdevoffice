@@ -110,6 +110,8 @@ class OpenClawGateway extends EventEmitter {
     this._connectSent = false;
     this._connectTimer = null;
     this._deviceIdentity = null;
+    this._pending = new Map();
+    this._rpcTimeout = 30000;
   }
 
   connect() {
@@ -160,6 +162,11 @@ class OpenClawGateway extends EventEmitter {
     });
 
     this.ws.on("close", () => {
+      for (const [id, pending] of this._pending.entries()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error(`Gateway disconnected before response: ${id}`));
+      }
+      this._pending.clear();
       this.ws = null;
       if (this._connectTimer) {
         clearTimeout(this._connectTimer);
@@ -234,6 +241,27 @@ class OpenClawGateway extends EventEmitter {
     this.ws.send(JSON.stringify({ type: "req", id, method: "connect", params }));
   }
 
+  _rpcRequest(method, params) {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) {
+        return reject(new Error("Gateway not connected"));
+      }
+
+      const id = randomUUID();
+      const timer = setTimeout(() => {
+        this._pending.delete(id);
+        reject(new Error(`RPC timeout: ${method}`));
+      }, this._rpcTimeout);
+
+      this._pending.set(id, { resolve, reject, timer });
+      this.ws.send(JSON.stringify({ type: "req", id, method, params }));
+    });
+  }
+
+  isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   _handleMessage(msg) {
     // Challenge from server — respond with signed device auth
     if (msg?.type === "event" && msg?.event === "connect.challenge") {
@@ -263,6 +291,15 @@ class OpenClawGateway extends EventEmitter {
           );
         }
       }
+      return;
+    }
+
+    if (msg?.type === "res" && this._pending.has(msg.id)) {
+      const { resolve, reject, timer } = this._pending.get(msg.id);
+      this._pending.delete(msg.id);
+      clearTimeout(timer);
+      if (msg.ok) resolve(msg.payload ?? msg);
+      else reject(new Error(JSON.stringify(msg.error ?? msg)));
       return;
     }
 
@@ -323,6 +360,18 @@ class OpenClawGateway extends EventEmitter {
       this.reconnectTimer = null;
     }
     if (this.ws) this.ws.close();
+  }
+
+  async agentsCreate(agentId, workspace) {
+    return this._rpcRequest("agents.create", { name: agentId, workspace });
+  }
+
+  async agentsFileSet(agentId, name, content) {
+    return this._rpcRequest("agents.files.set", { agentId, name, content });
+  }
+
+  async agentsDelete(agentId) {
+    return this._rpcRequest("agents.delete", { agentId });
   }
 }
 

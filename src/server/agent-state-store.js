@@ -1,5 +1,5 @@
 /** @typedef {"idle"|"working"|"meeting"} AgentStatus */
-/** @typedef {{ agentId: string, name: string, state: AgentStatus, taskTitle?: string }} AgentState */
+/** @typedef {{ agentId: string, name: string, state: AgentStatus, taskTitle?: string, deskIndex?: number }} AgentState */
 
 class AgentStateStore {
   constructor() {
@@ -25,6 +25,10 @@ class AgentStateStore {
 
   get(agentId) {
     return this.states.get(agentId);
+  }
+
+  delete(agentId) {
+    return this.states.delete(agentId);
   }
 
   resetAll() {

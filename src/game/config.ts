@@ -5,15 +5,12 @@ export const GAME_HEIGHT = 640;
 // Row 1 / Row 2 경계 Y 좌표
 export const ROW_BOUNDARY_Y = GAME_HEIGHT * 0.52; // 333px
 
-// 에이전트별 데스크 위치 (agentId → {x, y})
-// agentId는 실제 OpenClaw 에이전트 ID로 교체 필요
-export const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  "agent-a": { x: 160, y: 210 },
-  "agent-b": { x: 320, y: 210 },
-  "agent-c": { x: 160, y: 295 },
-  "agent-d": { x: 320, y: 295 },
-  // agent-e: 데스크 없음 → idle/working 시 라운지 유지
-};
+export const DESK_SLOTS: { x: number; y: number }[] = [
+  { x: 160, y: 210 },
+  { x: 320, y: 210 },
+  { x: 160, y: 295 },
+  { x: 320, y: 295 },
+];
 
 // 미팅 테이블 좌석 (최대 5개)
 export const MEETING_SEATS: { x: number; y: number }[] = [

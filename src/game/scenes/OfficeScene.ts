@@ -1,8 +1,8 @@
 import * as Phaser from "phaser";
 import { EventBus } from "../EventBus";
-import { GAME_HEIGHT, GAME_WIDTH, MEETING_SEATS } from "../config";
+import { DESK_SLOTS, GAME_HEIGHT, GAME_WIDTH, MEETING_SEATS } from "../config";
 import { AgentSprite } from "../sprites/AgentSprite";
-import type { AgentState, AgentStateChanged, AgentsSnapshot } from "../../types/agent";
+import type { AgentRemoved, AgentState, AgentStateChanged, AgentsSnapshot } from "../../types/agent";
 
 export class OfficeScene extends Phaser.Scene {
   private agents = new Map<string, AgentSprite>();
@@ -29,7 +29,25 @@ export class OfficeScene extends Phaser.Scene {
 
     const handleSnapshot = (data: unknown) => {
       const { agents } = data as AgentsSnapshot;
-      agents.forEach((agent, index) => this.spawnAgent(agent, index));
+      agents.forEach((agent, index) => {
+        const existing = this.agents.get(agent.agentId);
+        if (!existing) {
+          this.spawnAgent(agent, index);
+          return;
+        }
+
+        let meetingSeatIndex = -1;
+        if (agent.state === "meeting") {
+          meetingSeatIndex = this.claimMeetingSeat(agent.agentId);
+        } else {
+          this.releaseMeetingSeat(agent.agentId);
+        }
+
+        existing.setAgentState(agent.state, {
+          taskTitle: agent.taskTitle,
+          meetingSeatIndex,
+        });
+      });
     };
 
     const handleStateChanged = (data: unknown) => {
@@ -47,6 +65,15 @@ export class OfficeScene extends Phaser.Scene {
       sprite.setAgentState(state, { taskTitle, meetingSeatIndex });
     };
 
+    const handleAgentRemoved = (data: unknown) => {
+      const { agentId } = data as AgentRemoved;
+      const sprite = this.agents.get(agentId);
+      if (!sprite) return;
+      this.releaseMeetingSeat(agentId);
+      sprite.destroy();
+      this.agents.delete(agentId);
+    };
+
     const handleConnectionLost = () => {
       this.agents.forEach((sprite) => sprite.dim(true));
     };
@@ -57,12 +84,14 @@ export class OfficeScene extends Phaser.Scene {
 
     EventBus.on("agents:snapshot", handleSnapshot);
     EventBus.on("agent:state-changed", handleStateChanged);
+    EventBus.on("agent:removed", handleAgentRemoved);
     EventBus.on("connection:lost", handleConnectionLost);
     EventBus.on("connection:restored", handleConnectionRestored);
 
     this.events.once("shutdown", () => {
       EventBus.off("agents:snapshot", handleSnapshot);
       EventBus.off("agent:state-changed", handleStateChanged);
+      EventBus.off("agent:removed", handleAgentRemoved);
       EventBus.off("connection:lost", handleConnectionLost);
       EventBus.off("connection:restored", handleConnectionRestored);
     });
@@ -113,12 +142,17 @@ export class OfficeScene extends Phaser.Scene {
   private spawnAgent(state: AgentState, index: number) {
     if (this.agents.has(state.agentId)) return;
 
+    const deskPos = state.deskIndex != null && state.deskIndex >= 0
+      ? DESK_SLOTS[state.deskIndex]
+      : undefined;
+
     const sprite = new AgentSprite({
       scene: this,
       agentId: state.agentId,
       name: state.name,
       initialStatus: state.state,
       loungeIndex: index % 5,
+      deskPos,
     });
 
     this.agents.set(state.agentId, sprite);

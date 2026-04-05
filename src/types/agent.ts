@@ -5,6 +5,17 @@ export interface AgentState {
   name: string;
   state: AgentStatus;
   taskTitle?: string;
+  deskIndex?: number;
+}
+
+export interface AgentConfig {
+  agentId: string;
+  name: string;
+  identity: string;
+  soul: string;
+  profileImage: string | null;
+  deskIndex: number;
+  createdAt: string;
 }
 
 export interface AgentsSnapshot {
@@ -15,4 +26,8 @@ export interface AgentStateChanged {
   agentId: string;
   state: AgentStatus;
   taskTitle?: string;
+}
+
+export interface AgentRemoved {
+  agentId: string;
 }

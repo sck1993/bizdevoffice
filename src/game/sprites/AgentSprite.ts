@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { AgentStatus } from "../../types/agent";
-import { DESK_POSITIONS, LOUNGE_SEATS, MEETING_SEATS } from "../config";
+import { LOUNGE_SEATS, MEETING_SEATS } from "../config";
 
 interface AgentSpriteConfig {
   scene: Phaser.Scene;
@@ -8,6 +8,7 @@ interface AgentSpriteConfig {
   name: string;
   initialStatus: AgentStatus;
   loungeIndex: number; // 라운지 좌석 인덱스
+  deskPos?: { x: number; y: number };
 }
 
 export class AgentSprite extends Phaser.GameObjects.Sprite {
@@ -19,6 +20,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private label: Phaser.GameObjects.Text;
   private meetingSeatIndex = -1;
   private taskTitle?: string;
+  private deskPos?: { x: number; y: number };
 
   constructor(config: AgentSpriteConfig) {
     const loungePos = LOUNGE_SEATS[config.loungeIndex] ?? LOUNGE_SEATS[0];
@@ -28,6 +30,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.agentName = config.name;
     this.currentStatus = config.initialStatus;
     this.loungeIndex = config.loungeIndex;
+    this.deskPos = config.deskPos;
 
     config.scene.add.existing(this as unknown as Phaser.GameObjects.GameObject);
     this.setInteractive();
@@ -65,11 +68,10 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.tooltip.setVisible(false);
   }
 
-  private getTargetPosition(): { x: number; y: number } {
-    switch (this.currentStatus) {
+  private getTargetPosition(state: AgentStatus): { x: number; y: number } {
+    switch (state) {
       case "working": {
-        const desk = DESK_POSITIONS[this.agentId];
-        return desk ?? LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
+        return this.deskPos ?? LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
       }
       case "meeting": {
         return MEETING_SEATS[this.meetingSeatIndex] ?? LOUNGE_SEATS[this.loungeIndex] ?? { x: 130, y: 520 };
@@ -93,7 +95,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   private moveToTarget() {
-    const target = this.getTargetPosition();
+    const target = this.getTargetPosition(this.currentStatus);
     this.scene.tweens.add({
       targets: [this, this.label, this.tooltip],
       x: target.x,

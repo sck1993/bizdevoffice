@@ -19,6 +19,7 @@ app.prepare().then(() => {
     cors: { origin: "*" },
   });
 
+  global.__clawIo = io;
   initGateway(io);
 
   io.on("connection", (socket) => {

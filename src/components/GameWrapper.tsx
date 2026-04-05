@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { io } from "socket.io-client";
+import { AgentPanel } from "./AgentPanel";
 import { DisconnectBanner } from "./DisconnectBanner";
 import { EventBus } from "../game/EventBus";
 
@@ -58,6 +59,11 @@ export function GameWrapper() {
         console.log("[socket] agent:state-changed", data);
         EventBus.emit("agent:state-changed", data);
       });
+
+      socket.on("agent:removed", (data) => {
+        console.log("[socket] agent:removed", data);
+        EventBus.emit("agent:removed", data);
+      });
     };
 
     void init();
@@ -75,14 +81,28 @@ export function GameWrapper() {
       <div
         style={{
           width: "100%",
-          maxWidth: 1280,
+          maxWidth: 1680,
           margin: "0 auto",
-          borderRadius: 28,
-          overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0, 0, 0, 0.35)",
+          display: "flex",
+          gap: 24,
+          alignItems: "flex-start",
+          justifyContent: "center",
+          flexWrap: "wrap",
         }}
       >
-        <div ref={gameRef} />
+        <div
+          style={{
+            flex: "1 1 960px",
+            minWidth: 320,
+            maxWidth: 1280,
+            borderRadius: 28,
+            overflow: "hidden",
+            boxShadow: "0 24px 80px rgba(0, 0, 0, 0.35)",
+          }}
+        >
+          <div ref={gameRef} />
+        </div>
+        <AgentPanel />
       </div>
     </>
   );

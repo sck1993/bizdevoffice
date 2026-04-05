@@ -9,13 +9,16 @@ services:
       PORT: 3000
       OPENCLAW_URL: ${OPENCLAW_URL:-ws://openclaw:61744}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      OPENCLAW_WORKSPACE_ROOT: ${OPENCLAW_WORKSPACE_ROOT:-~/.openclaw/workspaces}
     volumes:
       - clawoffice_device:/app/data
+      - clawoffice_uploads:/app/public/uploads
     networks:
       - openclaw_external
 
 volumes:
   clawoffice_device:
+  clawoffice_uploads:
 
 networks:
   openclaw_external:
