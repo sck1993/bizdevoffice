@@ -103,17 +103,11 @@ class OpenClawGateway extends EventEmitter {
       maxProtocol: this.protocolVersion,
       client: {
         id: "cli",
+        displayName: "clawoffice-monitor",
         version: "0.1.0",
-        platform: "linux",
-        mode: "operator",
+        platform: "node",
+        mode: "cli",
       },
-      role: "operator",
-      scopes: ["operator.read", "operator.write"],
-      caps: [],
-      commands: [],
-      permissions: {},
-      locale: "en-US",
-      userAgent: "openclaw-cli/0.1.0 clawoffice-monitor",
     };
 
     if (this.gatewayToken) {
