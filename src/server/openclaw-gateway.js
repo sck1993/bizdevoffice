@@ -271,8 +271,8 @@ class OpenClawGateway extends EventEmitter {
       return;
     }
 
-    // All other messages — log and emit for future _handleMessage() expansion
-    console.log("[gateway] message:", JSON.stringify(msg).slice(0, 200));
+    // All other messages — log full payload and emit
+    console.log("[gateway] message:", JSON.stringify(msg));
     this.emit("message", msg);
   }
 
