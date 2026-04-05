@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 import { AgentStatus } from "../../types/agent";
 import { DESK_POSITIONS, LOUNGE_SEATS, MEETING_SEATS } from "../config";
 

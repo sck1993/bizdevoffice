@@ -7,9 +7,28 @@ class OpenClawGateway extends EventEmitter {
     this.url = url;
     this.ws = null;
     this.reconnectDelay = 5000;
+    this.reconnectTimer = null;
+    this.shouldReconnect = true;
   }
 
   connect() {
+    if (!this.url) {
+      console.warn("[gateway] OPENCLAW_URL is not configured. Running with snapshot-only dummy agents.");
+      return;
+    }
+
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.ws = new WebSocket(this.url);
 
     this.ws.on("open", () => {
@@ -21,15 +40,20 @@ class OpenClawGateway extends EventEmitter {
       try {
         const msg = JSON.parse(data.toString());
         this._handleMessage(msg);
-      } catch (e) {
+      } catch {
         // non-JSON 메시지 무시
       }
     });
 
     this.ws.on("close", () => {
+      this.ws = null;
       console.log("[gateway] disconnected — retrying in", this.reconnectDelay, "ms");
       this.emit("disconnected");
-      setTimeout(() => this.connect(), this.reconnectDelay);
+      if (!this.shouldReconnect || this.reconnectTimer) return;
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = null;
+        this.connect();
+      }, this.reconnectDelay);
     });
 
     this.ws.on("error", (err) => {
@@ -52,6 +76,11 @@ class OpenClawGateway extends EventEmitter {
   }
 
   disconnect() {
+    this.shouldReconnect = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.ws) this.ws.close();
   }
 }
