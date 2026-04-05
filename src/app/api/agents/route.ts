@@ -8,33 +8,13 @@ import {
   withLock,
 } from "../../../server/agent-file-store";
 import { gateway } from "../../../server/gateway-manager";
+import { AgentRouteError, clawGlobal, isTimeoutError, jsonError } from "@/lib/route-utils";
 
 export const runtime = "nodejs";
-
-const clawGlobal = globalThis as typeof globalThis & {
-  __clawIo?: { emit: (event: string, payload: unknown) => void };
-};
-
-class AgentRouteError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-function jsonError(status: number, message: string) {
-  return Response.json({ error: message }, { status });
-}
 
 function buildWorkspace(agentId: string) {
   const root = (process.env.OPENCLAW_WORKSPACE_ROOT || "~/.openclaw/workspaces").replace(/\/+$/, "");
   return `${root}/${agentId}`;
-}
-
-function isTimeoutError(error: unknown) {
-  return error instanceof Error && error.message.includes("RPC timeout:");
 }
 
 async function rollbackAgent(agentId: string) {

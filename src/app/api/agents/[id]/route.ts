@@ -5,33 +5,13 @@ import type { AgentConfig } from "@/types/agent";
 import { agentStateStore } from "../../../../server/agent-state-store";
 import { loadAll, saveAll, withLock } from "../../../../server/agent-file-store";
 import { gateway } from "../../../../server/gateway-manager";
+import { AgentRouteError, clawGlobal, isTimeoutError, jsonError } from "@/lib/route-utils";
 
 export const runtime = "nodejs";
-
-const clawGlobal = globalThis as typeof globalThis & {
-  __clawIo?: { emit: (event: string, payload: unknown) => void };
-};
-
-function jsonError(status: number, message: string) {
-  return Response.json({ error: message }, { status });
-}
 
 function resolveUploadPath(profileImage: string | null) {
   if (!profileImage?.startsWith("/uploads/")) return null;
   return path.join(process.cwd(), "public", profileImage.replace(/^\/+/, ""));
-}
-
-class AgentRouteError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-function isTimeoutError(error: unknown) {
-  return error instanceof Error && error.message.includes("RPC timeout:");
 }
 
 async function removeProfileImage(profileImage: string | null) {

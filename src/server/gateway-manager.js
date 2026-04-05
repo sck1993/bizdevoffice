@@ -57,8 +57,12 @@ function initGateway(socketIo) {
 
   // Agent state transitions from gateway events
   gateway.on("agent:working", ({ agentId, taskTitle }) => {
+    const prev = agentStateStore.get(agentId);
     agentStateStore.updateStatus(agentId, "working", taskTitle);
-    io?.emit("agent:state-changed", { agentId, state: "working", taskTitle });
+    // assistant 스트림 delta마다 이벤트가 오므로, 상태/taskTitle이 실제로 바뀔 때만 emit
+    if (prev?.state !== "working" || prev?.taskTitle !== taskTitle) {
+      io?.emit("agent:state-changed", { agentId, state: "working", taskTitle });
+    }
   });
 
   gateway.on("agent:idle", ({ agentId }) => {

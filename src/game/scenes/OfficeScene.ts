@@ -4,6 +4,10 @@ import { DESK_SLOTS, GAME_HEIGHT, GAME_WIDTH, MEETING_SEATS } from "../config";
 import { AgentSprite } from "../sprites/AgentSprite";
 import type { AgentRemoved, AgentState, AgentStateChanged, AgentsSnapshot } from "../../types/agent";
 
+function stableLoungeIndex(agentId: string): number {
+  return agentId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % 5;
+}
+
 export class OfficeScene extends Phaser.Scene {
   private agents = new Map<string, AgentSprite>();
   private meetingOccupied: (string | null)[] = MEETING_SEATS.map(() => null);
@@ -30,7 +34,7 @@ export class OfficeScene extends Phaser.Scene {
       agents.forEach((agent, index) => {
         const existing = this.agents.get(agent.agentId);
         if (!existing) {
-          this.spawnAgent(agent, index);
+          this.spawnAgent(agent);
           return;
         }
 
@@ -271,7 +275,7 @@ export class OfficeScene extends Phaser.Scene {
     });
   }
 
-  private spawnAgent(state: AgentState, index: number) {
+  private spawnAgent(state: AgentState) {
     if (this.agents.has(state.agentId)) return;
 
     const deskPos = state.deskIndex != null && state.deskIndex >= 0
@@ -283,7 +287,7 @@ export class OfficeScene extends Phaser.Scene {
       agentId: state.agentId,
       name: state.name,
       initialStatus: state.state,
-      loungeIndex: index % 5,
+      loungeIndex: stableLoungeIndex(state.agentId),
       deskPos,
     });
 

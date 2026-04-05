@@ -59,8 +59,8 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   private showTooltip() {
-    if (!this.taskTitle) return;
-    this.tooltip.setText(this.taskTitle);
+    const text = this.taskTitle ?? this.currentStatus;
+    this.tooltip.setText(text);
     this.tooltip.setVisible(true);
   }
 
@@ -102,7 +102,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private moveToTarget() {
     const target = this.getTargetPosition(this.currentStatus);
     this.scene.tweens.add({
-      targets: [this, this.label, this.tooltip],
+      targets: this,
       x: target.x,
       y: target.y,
       duration: 1000,
@@ -112,6 +112,8 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
         this.tooltip.setPosition(this.x, this.y - 70);
       },
       onComplete: () => {
+        this.label.setPosition(this.x, this.y - 50);
+        this.tooltip.setPosition(this.x, this.y - 70);
         this.playAnimation();
       },
     });

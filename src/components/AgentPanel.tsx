@@ -3,7 +3,7 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 
 import { EventBus } from "../game/EventBus";
-import type { AgentConfig, AgentRemoved, AgentState, AgentsSnapshot } from "../types/agent";
+import type { AgentConfig, AgentRemoved, AgentState, AgentStateChanged, AgentsSnapshot } from "../types/agent";
 
 interface AgentEditorModalProps {
   mode: "create" | "edit";
@@ -425,6 +425,13 @@ export function AgentPanel() {
       setStates(Array.isArray(agents) ? agents : []);
     };
 
+    const handleStateChanged = (payload: unknown) => {
+      const { agentId, state, taskTitle } = payload as AgentStateChanged;
+      setStates((current) =>
+        current.map((s) => s.agentId === agentId ? { ...s, state, taskTitle } : s)
+      );
+    };
+
     const handleRemoved = (payload: unknown) => {
       const { agentId } = payload as AgentRemoved;
       setConfigs((current) => current.filter((agent) => agent.agentId !== agentId));
@@ -433,10 +440,12 @@ export function AgentPanel() {
     };
 
     EventBus.on("agents:snapshot", handleSnapshot);
+    EventBus.on("agent:state-changed", handleStateChanged);
     EventBus.on("agent:removed", handleRemoved);
 
     return () => {
       EventBus.off("agents:snapshot", handleSnapshot);
+      EventBus.off("agent:state-changed", handleStateChanged);
       EventBus.off("agent:removed", handleRemoved);
     };
   }, []);
