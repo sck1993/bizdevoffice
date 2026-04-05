@@ -26,6 +26,9 @@
 .claude/
 .superpowers/
 
+# device identity (persisted via Docker volume, not committed)
+/data/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
