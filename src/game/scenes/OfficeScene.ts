@@ -21,10 +21,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   create() {
-    this.add
-      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, "background")
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-
+    this.drawBackdrop();
     this.drawZones();
     this.registerAnimations();
 
@@ -100,12 +97,66 @@ export class OfficeScene extends Phaser.Scene {
     });
   }
 
+  private drawBackdrop() {
+    this.cameras.main.setBackgroundColor("#111827");
+
+    const frame = this.add.graphics();
+    frame.fillStyle(0x162033, 1);
+    frame.fillRoundedRect(24, 22, GAME_WIDTH - 48, GAME_HEIGHT - 44, 24);
+
+    const wall = this.add.graphics();
+    wall.fillStyle(0xf4ede4, 1);
+    wall.fillRoundedRect(40, 22, GAME_WIDTH - 80, 180, 22);
+
+    const floor = this.add.graphics();
+    floor.fillStyle(0xe4b56d, 1);
+    floor.fillRoundedRect(40, 150, GAME_WIDTH - 80, GAME_HEIGHT - 172, 0);
+
+    const floorLines = this.add.graphics();
+    floorLines.lineStyle(2, 0xf0c989, 0.18);
+    for (let y = 172; y < GAME_HEIGHT - 30; y += 28) {
+      floorLines.lineBetween(48, y, GAME_WIDTH - 48, y);
+    }
+
+    const floorSeams = this.add.graphics();
+    floorSeams.lineStyle(1, 0xc7864c, 0.2);
+    for (let x = 74; x < GAME_WIDTH - 40; x += 96) {
+      floorSeams.lineBetween(x, 154, x, GAME_HEIGHT - 24);
+    }
+
+    const northGlass = this.add.graphics();
+    northGlass.fillStyle(0xaed2f5, 0.18);
+    northGlass.lineStyle(2, 0xd9edf9, 0.4);
+    northGlass.fillRoundedRect(648, 48, 368, 88, 18);
+    northGlass.strokeRoundedRect(648, 48, 368, 88, 18);
+
+    const leftGlass = this.add.graphics();
+    leftGlass.fillStyle(0xb9d7f3, 0.1);
+    leftGlass.lineStyle(2, 0xcfe5f8, 0.3);
+    leftGlass.fillRoundedRect(40, 92, 126, 292, 18);
+    leftGlass.strokeRoundedRect(40, 92, 126, 292, 18);
+
+    const rightGlass = this.add.graphics();
+    rightGlass.fillStyle(0xb9d7f3, 0.08);
+    rightGlass.lineStyle(2, 0xcfe5f8, 0.22);
+    rightGlass.fillRoundedRect(1098, 86, 142, 340, 18);
+    rightGlass.strokeRoundedRect(1098, 86, 142, 340, 18);
+
+    const centerGlow = this.add.graphics();
+    centerGlow.fillStyle(0xffffff, 0.06);
+    centerGlow.fillEllipse(642, 338, 520, 256);
+
+    const loungeGuide = this.add.graphics();
+    loungeGuide.fillStyle(0x3d2d1e, 0.1);
+    loungeGuide.fillRoundedRect(52, 430, 690, 136, 28);
+  }
+
   private drawZones() {
     this.createZoneCard({
       x: 48,
-      y: 92,
+      y: 102,
       width: 336,
-      height: 256,
+      height: 246,
       fill: 0x17324a,
       stroke: 0x5db7ff,
       title: "Work Zone",
@@ -114,9 +165,9 @@ export class OfficeScene extends Phaser.Scene {
 
     this.createZoneCard({
       x: 748,
-      y: 118,
+      y: 128,
       width: 286,
-      height: 190,
+      height: 182,
       fill: 0x203a30,
       stroke: 0x7ed4a3,
       title: "Meeting Zone",
@@ -127,7 +178,7 @@ export class OfficeScene extends Phaser.Scene {
       x: 44,
       y: 438,
       width: 700,
-      height: 126,
+      height: 128,
       fill: 0x43311f,
       stroke: 0xffb16e,
       title: "Lounge Zone",
@@ -148,29 +199,34 @@ export class OfficeScene extends Phaser.Scene {
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.14);
     shadow.fillRoundedRect(config.x + 8, config.y + 12, config.width, config.height, 26);
+    shadow.setDepth(1);
 
     const panel = this.add.graphics();
-    panel.fillStyle(config.fill, 0.18);
-    panel.lineStyle(2, config.stroke, 0.9);
+    panel.fillStyle(config.fill, 0.12);
+    panel.lineStyle(2, config.stroke, 0.72);
     panel.fillRoundedRect(config.x, config.y, config.width, config.height, 26);
     panel.strokeRoundedRect(config.x, config.y, config.width, config.height, 26);
+    panel.setDepth(2);
 
-    const chip = this.add.graphics();
-    chip.fillStyle(config.stroke, 0.2);
-    chip.lineStyle(1, config.stroke, 0.75);
-    chip.fillRoundedRect(config.x + 18, config.y + 16, 118, 32, 16);
-    chip.strokeRoundedRect(config.x + 18, config.y + 16, 118, 32, 16);
-
-    this.add.text(config.x + 30, config.y + 24, config.title, {
+    const titleText = this.add.text(config.x + 30, config.y + 24, config.title, {
       fontSize: "14px",
       fontStyle: "bold",
       color: "#eef7ff",
     });
+    titleText.setDepth(4);
 
-    this.add.text(config.x + 20, config.y + 58, config.subtitle, {
+    const chip = this.add.graphics();
+    chip.fillStyle(config.stroke, 0.2);
+    chip.lineStyle(1, config.stroke, 0.65);
+    chip.fillRoundedRect(config.x + 18, config.y + 16, Math.max(132, titleText.width + 28), 32, 16);
+    chip.strokeRoundedRect(config.x + 18, config.y + 16, Math.max(132, titleText.width + 28), 32, 16);
+    chip.setDepth(3);
+
+    const subtitleText = this.add.text(config.x + 20, config.y + 58, config.subtitle, {
       fontSize: "12px",
       color: "#d8e4f4",
     });
+    subtitleText.setDepth(4);
   }
 
   private registerAnimations() {
