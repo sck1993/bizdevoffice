@@ -1,16 +1,16 @@
 {
   "props": [
     {
-      "id": "desk-1775393134325",
+      "id": "desk-1775395339621",
       "type": "desk",
       "tileCol": 1,
       "tileRow": 1
     },
     {
-      "id": "desk-1775393138024",
-      "type": "desk",
-      "tileCol": 2,
-      "tileRow": 1
+      "id": "meeting_chair-1775395348856",
+      "type": "meeting_chair",
+      "tileCol": 9,
+      "tileRow": 2
     }
   ]
 }
