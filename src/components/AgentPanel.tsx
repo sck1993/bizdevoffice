@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 
 import { EventBus } from "../game/EventBus";
 import type { AgentConfig, AgentRemoved, AgentState, AgentsSnapshot } from "../types/agent";
 
-interface CreateModalProps {
+interface AgentEditorModalProps {
+  mode: "create" | "edit";
   gatewayConnected: boolean;
+  initialAgent?: AgentConfig;
   onClose: () => void;
-  onCreated: (agent: AgentConfig) => void;
+  onSubmitted: (agent: AgentConfig) => void;
 }
 
 function statusLabel(state: AgentState["state"], taskTitle?: string) {
@@ -19,24 +21,37 @@ function statusLabel(state: AgentState["state"], taskTitle?: string) {
   return "idle";
 }
 
-function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalProps) {
-  const [name, setName] = useState("");
-  const [identity, setIdentity] = useState("");
-  const [soul, setSoul] = useState("");
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+function AgentEditorModal({
+  mode,
+  gatewayConnected,
+  initialAgent,
+  onClose,
+  onSubmitted,
+}: AgentEditorModalProps) {
+  const isEdit = mode === "edit";
+  const [name, setName] = useState(initialAgent?.name ?? "");
+  const [identity, setIdentity] = useState(initialAgent?.identity ?? "");
+  const [soul, setSoul] = useState(initialAgent?.soul ?? "");
+  const [profileImage, setProfileImage] = useState<string | null>(initialAgent?.profileImage ?? null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedName = name.trim();
+  const trimmedIdentity = identity.trim();
+  const trimmedSoul = soul.trim();
+  const remoteFieldsChanged =
+    isEdit &&
+    (trimmedIdentity !== (initialAgent?.identity ?? "") || trimmedSoul !== (initialAgent?.soul ?? ""));
   const canSubmit =
-    gatewayConnected &&
     !uploading &&
     !submitting &&
-    name.trim().length > 0 &&
-    identity.trim().length > 0 &&
-    soul.trim().length > 0;
+    trimmedName.length > 0 &&
+    trimmedIdentity.length > 0 &&
+    trimmedSoul.length > 0 &&
+    (isEdit ? gatewayConnected || !remoteFieldsChanged : gatewayConnected);
 
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -59,7 +74,6 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
 
       setProfileImage(data.url);
     } catch (uploadError) {
-      setProfileImage(null);
       setError(uploadError instanceof Error ? uploadError.message : "Image upload failed");
     } finally {
       setUploading(false);
@@ -74,25 +88,28 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          identity,
-          soul,
-          profileImage,
-        }),
-      });
+      const response = await fetch(
+        isEdit ? `/api/agents/${initialAgent?.agentId}` : "/api/agents",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmedName,
+            identity: trimmedIdentity,
+            soul: trimmedSoul,
+            profileImage,
+          }),
+        },
+      );
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || "Agent creation failed");
+        throw new Error(data?.error || `Agent ${isEdit ? "update" : "creation"} failed`);
       }
 
-      onCreated(data.agent as AgentConfig);
+      onSubmitted(data.agent as AgentConfig);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Agent creation failed");
+      setError(submitError instanceof Error ? submitError.message : `Agent ${isEdit ? "update" : "creation"} failed`);
     } finally {
       setSubmitting(false);
     }
@@ -131,10 +148,29 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
             borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           }}
         >
-          <div style={{ fontSize: 22, fontWeight: 700 }}>새 에이전트 추가</div>
-          <div style={{ marginTop: 6, color: "rgba(228, 236, 255, 0.7)", fontSize: 14 }}>
-            이름, 역할, 성격을 입력하면 OpenClaw 워크스페이스와 오피스 씬에 바로 반영됩니다.
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
+            {isEdit ? "에이전트 수정" : "새 에이전트 추가"}
           </div>
+          <div style={{ marginTop: 6, color: "rgba(228, 236, 255, 0.7)", fontSize: 14 }}>
+            {isEdit
+              ? "표시 이름, 역할, 성격, 프로필 이미지를 수정할 수 있습니다."
+              : "이름, 역할, 성격을 입력하면 OpenClaw 워크스페이스와 오피스 씬에 바로 반영됩니다."}
+          </div>
+          {isEdit && initialAgent ? (
+            <div
+              style={{
+                marginTop: 10,
+                display: "inline-flex",
+                borderRadius: 999,
+                padding: "5px 10px",
+                fontSize: 12,
+                color: "#a8d8ff",
+                background: "rgba(77, 176, 255, 0.14)",
+              }}
+            >
+              id: {initialAgent.agentId}
+            </div>
+          ) : null}
         </div>
 
         <div style={{ padding: 24, display: "grid", gap: 16 }}>
@@ -164,6 +200,23 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
                   JPEG, PNG, WEBP. 최대 2MB.
                   {uploading ? " 업로드 중..." : ""}
                 </div>
+                {profileImage ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileImage(null)}
+                    style={{
+                      width: "fit-content",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      background: "transparent",
+                      color: "#dce6fb",
+                      padding: "7px 10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    이미지 제거
+                  </button>
+                ) : null}
               </div>
             </div>
           </label>
@@ -225,7 +278,7 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
             />
           </label>
 
-          {!gatewayConnected ? (
+          {!gatewayConnected && !isEdit ? (
             <div
               style={{
                 borderRadius: 16,
@@ -237,6 +290,21 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
               }}
             >
               OpenClaw 연결이 필요합니다. 연결되면 생성 버튼이 활성화됩니다.
+            </div>
+          ) : null}
+
+          {!gatewayConnected && isEdit && remoteFieldsChanged ? (
+            <div
+              style={{
+                borderRadius: 16,
+                padding: "12px 14px",
+                background: "rgba(255, 132, 95, 0.14)",
+                border: "1px solid rgba(255, 132, 95, 0.25)",
+                color: "#ffd8cd",
+                fontSize: 13,
+              }}
+            >
+              OpenClaw가 연결되어야 역할과 성격을 저장할 수 있습니다. 이름이나 프로필 사진만 바꾸는 경우에는 저장할 수 있습니다.
             </div>
           ) : null}
 
@@ -295,7 +363,7 @@ function CreateAgentModal({ gatewayConnected, onClose, onCreated }: CreateModalP
               cursor: canSubmit ? "pointer" : "not-allowed",
             }}
           >
-            {submitting ? "생성 중..." : "생성"}
+            {submitting ? (isEdit ? "저장 중..." : "생성 중...") : isEdit ? "저장" : "생성"}
           </button>
         </div>
       </div>
@@ -309,6 +377,7 @@ export function AgentPanel() {
   const [gatewayConnected, setGatewayConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refreshConfigs() {
@@ -319,6 +388,7 @@ export function AgentPanel() {
         throw new Error(data?.error || "Failed to load agents");
       }
       setConfigs(data.agents as AgentConfig[]);
+      setError(null);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Failed to load agents");
     } finally {
@@ -359,6 +429,7 @@ export function AgentPanel() {
       const { agentId } = payload as AgentRemoved;
       setConfigs((current) => current.filter((agent) => agent.agentId !== agentId));
       setStates((current) => current.filter((agent) => agent.agentId !== agentId));
+      setEditingAgent((current) => (current?.agentId === agentId ? null : current));
     };
 
     EventBus.on("agents:snapshot", handleSnapshot);
@@ -402,6 +473,13 @@ export function AgentPanel() {
   function handleCreated(agent: AgentConfig) {
     setConfigs((current) => [...current, agent]);
     setShowCreateModal(false);
+    setError(null);
+  }
+
+  function handleUpdated(agent: AgentConfig) {
+    setConfigs((current) => current.map((item) => (item.agentId === agent.agentId ? agent : item)));
+    setEditingAgent(null);
+    setError(null);
   }
 
   return (
@@ -456,7 +534,9 @@ export function AgentPanel() {
           }}
         >
           {loading ? (
-            <div style={{ color: "rgba(228, 236, 255, 0.72)", fontSize: 14 }}>에이전트 목록을 불러오는 중입니다...</div>
+            <div style={{ color: "rgba(228, 236, 255, 0.72)", fontSize: 14 }}>
+              에이전트 목록을 불러오는 중입니다...
+            </div>
           ) : merged.length === 0 ? (
             <div
               style={{
@@ -541,7 +621,21 @@ export function AgentPanel() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingAgent(agent)}
+                    style={{
+                      borderRadius: 999,
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      color: "#e5eeff",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    수정
+                  </button>
                   <button
                     type="button"
                     onClick={() => void handleDelete(agent.agentId)}
@@ -599,10 +693,21 @@ export function AgentPanel() {
       </aside>
 
       {showCreateModal ? (
-        <CreateAgentModal
+        <AgentEditorModal
+          mode="create"
           gatewayConnected={gatewayConnected}
           onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
+          onSubmitted={handleCreated}
+        />
+      ) : null}
+
+      {editingAgent ? (
+        <AgentEditorModal
+          mode="edit"
+          gatewayConnected={gatewayConnected}
+          initialAgent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSubmitted={handleUpdated}
         />
       ) : null}
     </>

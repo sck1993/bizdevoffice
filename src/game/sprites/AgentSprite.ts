@@ -94,6 +94,11 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.moveToTarget();
   }
 
+  setAgentName(name: string) {
+    this.agentName = name;
+    this.label.setText(name);
+  }
+
   private moveToTarget() {
     const target = this.getTargetPosition(this.currentStatus);
     this.scene.tweens.add({

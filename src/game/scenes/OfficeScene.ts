@@ -36,6 +36,8 @@ export class OfficeScene extends Phaser.Scene {
           return;
         }
 
+        existing.setAgentName(agent.name);
+
         let meetingSeatIndex = -1;
         if (agent.state === "meeting") {
           meetingSeatIndex = this.claimMeetingSeat(agent.agentId);
