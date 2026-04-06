@@ -47,6 +47,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
     config.scene.add.existing(this as unknown as Phaser.GameObjects.GameObject);
     this.setInteractive();
+    this.setDepth(10); // 소품(depth 4)보다 위에 렌더링
 
     // 커스텀 이미지 적용 (동적 로드)
     if (config.imageUrl) {
@@ -59,7 +60,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       color: "#ffffff",
       backgroundColor: "#00000088",
       padding: { x: 4, y: 2 },
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(11);
 
     // 툴팁 (기본 숨김)
     this.tooltip = config.scene.add.text(this.x, this.y - 70, "", {
@@ -68,7 +69,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       backgroundColor: "#333333cc",
       padding: { x: 6, y: 3 },
       wordWrap: { width: 200 },
-    }).setOrigin(0.5).setVisible(false);
+    }).setOrigin(0.5).setVisible(false).setDepth(12);
 
     this.on("pointerdown", () => this.showTooltip());
     config.scene.input.on("pointerdown", (_: unknown, gameObjects: Phaser.GameObjects.GameObject[]) => {
