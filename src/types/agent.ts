@@ -17,7 +17,6 @@ export interface AgentConfig {
   profileImage: string | null;
   deskIndex: number;
   createdAt: string;
-  model?: string;
 }
 
 export interface AgentsSnapshot {

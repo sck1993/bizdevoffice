@@ -36,7 +36,6 @@ export async function POST(request: Request) {
     identity?: string;
     soul?: string;
     profileImage?: string | null;
-    model?: string | null;
   };
 
   try {
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
   const identity = body.identity?.trim();
   const soul = body.soul?.trim();
   const profileImage = body.profileImage ?? null;
-  const model = body.model?.trim() || undefined;
 
   if (!name || !identity || !soul) {
     return jsonError(400, "name, identity, and soul are required");
@@ -71,7 +69,7 @@ export async function POST(request: Request) {
       const createdAt = new Date().toISOString();
 
       try {
-        await gateway.agentsCreate(agentId, buildWorkspace(agentId), model);
+        await gateway.agentsCreate(agentId, buildWorkspace(agentId));
       } catch (error) {
         if (isTimeoutError(error)) {
           await rollbackAgent(agentId);
@@ -114,7 +112,6 @@ export async function POST(request: Request) {
         profileImage,
         deskIndex,
         createdAt,
-        ...(model ? { model } : {}),
       };
 
       saveAll([...existing, agent]);

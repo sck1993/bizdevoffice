@@ -362,10 +362,8 @@ class OpenClawGateway extends EventEmitter {
     if (this.ws) this.ws.close();
   }
 
-  async agentsCreate(agentId, workspace, model) {
-    const params = { name: agentId, workspace };
-    if (model) params.model = model;
-    return this._rpcRequest("agents.create", params);
+  async agentsCreate(agentId, workspace) {
+    return this._rpcRequest("agents.create", { name: agentId, workspace });
   }
 
   async agentsFileSet(agentId, name, content) {
