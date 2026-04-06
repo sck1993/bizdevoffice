@@ -45,12 +45,15 @@ function toAgentId(name, existingIds) {
     .replace(/[^\w\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "") || "agent";
+    .replace(/^-|-$/g, "");
 
-  let candidate = slug;
+  // 한국어 등 비ASCII 이름은 slug가 비어 있으므로 타임스탬프 기반 ID 사용
+  const base = slug || `agent-${Date.now()}`;
+
+  let candidate = base;
   let counter = 2;
   while (existingIds.has(candidate)) {
-    candidate = `${slug}-${counter++}`;
+    candidate = `${base}-${counter++}`;
   }
   return candidate;
 }

@@ -27,16 +27,22 @@ function isSelfReferentialGatewayUrl(url) {
 /**
  * Sync agent store from a health event payload.
  * Adds new agents (idle), leaves existing agents' states untouched.
+ * Display name is resolved from file store first, then health payload, then agentId.
  */
 function syncAgentsFromHealth(payload) {
   const agents = payload?.agents;
   if (!Array.isArray(agents)) return;
 
+  const saved = agentFileStore.loadAll();
+  const savedMap = new Map(saved.map((a) => [a.agentId, a]));
+
   for (const a of agents) {
     const agentId = a.agentId;
-    const name = a.name ?? agentId;
     if (!agentStateStore.get(agentId)) {
-      agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex: -1 });
+      const fileAgent = savedMap.get(agentId);
+      const name = fileAgent?.name ?? a.name ?? agentId;
+      const deskIndex = fileAgent?.deskIndex ?? -1;
+      agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex });
       console.log("[gateway] registered agent from health:", agentId, name);
     }
   }
