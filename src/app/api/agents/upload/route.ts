@@ -46,5 +46,5 @@ export async function POST(request: Request) {
   const destPath = path.join(UPLOADS_DIR, filename);
 
   fs.writeFileSync(destPath, resized);
-  return Response.json({ url: `/uploads/${filename}` });
+  return Response.json({ url: `/api/uploads/${filename}` });
 }

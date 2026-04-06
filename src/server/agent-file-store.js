@@ -3,7 +3,8 @@ const path = require("path");
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const AGENTS_FILE = path.join(DATA_DIR, "agents.json");
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+// data/uploads — 이미 마운트된 clawoffice_device 볼륨 내에 저장해 컨테이너 재시작 후에도 유지
+const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 const DESK_SLOT_COUNT = 4; // Must match desk prop count in data/office.json (see office-file-store.js getDeskCount)
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
