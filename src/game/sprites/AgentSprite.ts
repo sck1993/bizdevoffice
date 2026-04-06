@@ -114,6 +114,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private loadCustomTexture(agentId: string, imageUrl: string) {
     const key = `sprite_${agentId}`;
     if (this.scene.textures.exists(key)) {
+      this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.setTexture(key);
       this.setDisplaySize(80, 80);
       return;
@@ -122,6 +123,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     const onComplete = () => {
       if (!this.scene || !this.active) return;
       if (this.scene.textures.exists(key)) {
+        this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
         this.setTexture(key);
         this.setDisplaySize(80, 80);
       } else {
@@ -170,9 +172,17 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
         this.wanderTimer = null;
         if (this.currentStatus !== "idle") return;
         const b = LOUNGE_BOUNDS;
+        const TILE = 80;
 
-        const tx = Phaser.Math.Between(b.minX, b.maxX);
-        const ty = Phaser.Math.Between(b.minY, b.maxY);
+        // 현재 위치에서 ±1타일 범위 내 인접 이동, 존 경계 클램핑
+        const tx = Phaser.Math.Clamp(
+          this.x + Phaser.Math.Between(-1, 1) * TILE,
+          b.minX, b.maxX,
+        );
+        const ty = Phaser.Math.Clamp(
+          this.y + Phaser.Math.Between(-1, 1) * TILE,
+          b.minY, b.maxY,
+        );
 
         this.scene.tweens.add({
           targets: this,

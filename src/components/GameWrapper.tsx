@@ -36,6 +36,10 @@ export function GameWrapper() {
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH,
         },
+        render: {
+          antialias: true,
+          roundPixels: false,
+        },
       });
 
       socket = io();
