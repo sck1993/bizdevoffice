@@ -33,9 +33,17 @@ function AgentEditorModal({
   const [identity, setIdentity] = useState(initialAgent?.identity ?? "");
   const [soul, setSoul] = useState(initialAgent?.soul ?? "");
   const [profileImage, setProfileImage] = useState<string | null>(initialAgent?.profileImage ?? null);
+  const [staticAssets, setStaticAssets] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/agents/assets")
+      .then((r) => r.json())
+      .then((d) => setStaticAssets(d.assets ?? []))
+      .catch(() => {});
+  }, []);
 
   const trimmedName = name.trim();
   const trimmedIdentity = identity.trim();
@@ -200,6 +208,34 @@ function AgentEditorModal({
                   JPEG, PNG, WEBP. 최대 2MB.
                   {uploading ? " 업로드 중..." : ""}
                 </div>
+                {staticAssets.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
+                    {staticAssets.map((url) => {
+                      const selected = profileImage === url;
+                      return (
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => setProfileImage(selected ? null : url)}
+                          title={url.split("/").pop()}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 12,
+                            border: selected
+                              ? "2px solid #4db0ff"
+                              : "1px solid rgba(255, 255, 255, 0.12)",
+                            background: `center / cover no-repeat url(${url})`,
+                            cursor: "pointer",
+                            padding: 0,
+                            outline: selected ? "2px solid rgba(77, 176, 255, 0.4)" : "none",
+                            outlineOffset: 2,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : null}
                 {profileImage ? (
                   <button
                     type="button"
