@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { UPLOADS_DIR } from "../../../../server/agent-file-store";
 
 export const runtime = "nodejs";
@@ -33,10 +34,17 @@ export async function POST(request: Request) {
     return jsonError(413, "Image must be 2MB or smaller");
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const filename = `${randomUUID()}${ext}`;
+  const raw = Buffer.from(await file.arrayBuffer());
+
+  // 160×160으로 리사이징 (canvas 표시 크기 80px의 2배 — 계단 현상 완화)
+  const resized = await sharp(raw)
+    .resize(160, 160, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
+
+  const filename = `${randomUUID()}.png`;
   const destPath = path.join(UPLOADS_DIR, filename);
 
-  fs.writeFileSync(destPath, buffer);
+  fs.writeFileSync(destPath, resized);
   return Response.json({ url: `/uploads/${filename}` });
 }
