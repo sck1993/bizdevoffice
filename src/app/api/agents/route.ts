@@ -123,6 +123,7 @@ export async function POST(request: Request) {
       name: agent.name,
       state: "idle",
       deskIndex: agent.deskIndex,
+      spriteImage: agent.profileImage ?? null,
     });
     clawGlobal.__clawIo?.emit("agents:snapshot", { agents: agentStateStore.getAll() });
 

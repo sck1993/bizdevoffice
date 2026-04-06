@@ -122,6 +122,7 @@ export async function PATCH(
     agentStateStore.set(agentId, {
       name: result.agent.name,
       deskIndex: result.agent.deskIndex,
+      spriteImage: result.agent.profileImage ?? null,
     });
     clawGlobal.__clawIo?.emit("agents:snapshot", { agents: agentStateStore.getAll() });
     await removeProfileImage(result.previousProfileImage);

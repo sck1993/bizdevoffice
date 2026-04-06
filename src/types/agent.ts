@@ -6,6 +6,7 @@ export interface AgentState {
   state: AgentStatus;
   taskTitle?: string;
   deskIndex?: number;
+  spriteImage?: string | null;
 }
 
 export interface AgentConfig {

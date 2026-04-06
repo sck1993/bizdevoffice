@@ -11,6 +11,7 @@ interface AgentSpriteConfig {
   meetingSeats: { x: number; y: number }[];
   deskPos?: { x: number; y: number };
   deskIndex?: number;
+  imageUrl?: string | null;
 }
 
 export class AgentSprite extends Phaser.GameObjects.Sprite {
@@ -42,6 +43,11 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
     config.scene.add.existing(this as unknown as Phaser.GameObjects.GameObject);
     this.setInteractive();
+
+    // 커스텀 이미지 적용 (동적 로드)
+    if (config.imageUrl) {
+      this.loadCustomTexture(config.agentId, config.imageUrl);
+    }
 
     // 이름 라벨
     this.label = config.scene.add.text(this.x, this.y - 50, config.name, {
@@ -100,9 +106,31 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.moveToTarget();
   }
 
+  private loadCustomTexture(agentId: string, imageUrl: string) {
+    const key = `sprite_${agentId}`;
+    if (this.scene.textures.exists(key)) {
+      this.setTexture(key);
+      this.setDisplaySize(80, 80);
+      return;
+    }
+    this.scene.load.image(key, imageUrl);
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      if (this.scene && this.active) {
+        this.setTexture(key);
+        this.setDisplaySize(80, 80);
+      }
+    });
+    this.scene.load.start();
+  }
+
   setAgentName(name: string) {
     this.agentName = name;
     this.label.setText(name);
+  }
+
+  setAgentImage(imageUrl: string | null | undefined) {
+    if (!imageUrl) return;
+    this.loadCustomTexture(this.agentId, imageUrl);
   }
 
   updatePositionRefs(
