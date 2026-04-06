@@ -21,6 +21,15 @@ function statusLabel(state: AgentState["state"], taskTitle?: string) {
   return "idle";
 }
 
+const AVAILABLE_MODELS: { value: string; label: string }[] = [
+  { value: "openai-codex/gpt-5.4", label: "gpt-5.4 · openai-codex" },
+  { value: "openrouter/google/gemma-4-26b-a4b-it", label: "gemma-4-26b-a4b-it · openrouter" },
+];
+
+function modelLabel(model?: string) {
+  return AVAILABLE_MODELS.find((m) => m.value === model)?.label ?? model ?? "—";
+}
+
 function AgentEditorModal({
   mode,
   gatewayConnected,
@@ -33,6 +42,7 @@ function AgentEditorModal({
   const [identity, setIdentity] = useState(initialAgent?.identity ?? "");
   const [soul, setSoul] = useState(initialAgent?.soul ?? "");
   const [profileImage, setProfileImage] = useState<string | null>(initialAgent?.profileImage ?? null);
+  const [model, setModel] = useState<string>(initialAgent?.model ?? AVAILABLE_MODELS[0].value);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +108,7 @@ function AgentEditorModal({
             identity: trimmedIdentity,
             soul: trimmedSoul,
             profileImage,
+            model,
           }),
         },
       );
@@ -276,6 +287,29 @@ function AgentEditorModal({
                 minHeight: 120,
               }}
             />
+          </label>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span style={{ fontSize: 13, color: "#c9d4eb" }}>모델</span>
+            <select
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              style={{
+                borderRadius: 14,
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                background: "rgba(255, 255, 255, 0.04)",
+                color: "#f5f8ff",
+                padding: "13px 14px",
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              {AVAILABLE_MODELS.map((m) => (
+                <option key={m.value} value={m.value} style={{ background: "#0e1a2e" }}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           {!gatewayConnected && !isEdit ? (
@@ -626,6 +660,19 @@ export function AgentPanel() {
                       >
                         desk: {agent.deskIndex >= 0 ? agent.deskIndex + 1 : "lounge"}
                       </span>
+                      {agent.model ? (
+                        <span
+                          style={{
+                            borderRadius: 999,
+                            background: "rgba(134, 242, 184, 0.12)",
+                            color: "#9df5c4",
+                            padding: "4px 8px",
+                            fontSize: 11,
+                          }}
+                        >
+                          {modelLabel(agent.model)}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

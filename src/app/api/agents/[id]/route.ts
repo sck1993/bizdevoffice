@@ -50,6 +50,7 @@ export async function PATCH(
     identity?: string;
     soul?: string;
     profileImage?: string | null;
+    model?: string | null;
   };
 
   try {
@@ -73,6 +74,7 @@ export async function PATCH(
         identity: body.identity === undefined ? current.identity : String(body.identity).trim(),
         soul: body.soul === undefined ? current.soul : String(body.soul).trim(),
         profileImage: body.profileImage === undefined ? current.profileImage : body.profileImage,
+        model: body.model === undefined ? current.model : (body.model?.trim() || undefined),
       };
 
       if (!nextAgent.name || !nextAgent.identity || !nextAgent.soul) {
