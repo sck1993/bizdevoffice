@@ -38,11 +38,12 @@ function syncAgentsFromHealth(payload) {
 
   for (const a of agents) {
     const agentId = a.agentId;
+    const fileAgent = savedMap.get(agentId);
+    if (!fileAgent) continue; // 커스텀 생성된 에이전트만 표시
     if (!agentStateStore.get(agentId)) {
-      const fileAgent = savedMap.get(agentId);
-      const name = fileAgent?.name ?? a.name ?? agentId;
-      const deskIndex = fileAgent?.deskIndex ?? -1;
-      const spriteImage = fileAgent?.profileImage ?? null;
+      const name = fileAgent.name ?? a.name ?? agentId;
+      const deskIndex = fileAgent.deskIndex ?? -1;
+      const spriteImage = fileAgent.profileImage ?? null;
       agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex, spriteImage });
       console.log("[gateway] registered agent from health:", agentId, name);
     }

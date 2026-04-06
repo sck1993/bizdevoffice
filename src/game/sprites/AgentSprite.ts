@@ -14,6 +14,9 @@ interface AgentSpriteConfig {
   imageUrl?: string | null;
 }
 
+// 라운지 존 배회 범위 (패딩 포함) — idle 상태에서만 사용
+const LOUNGE_BOUNDS = { minX: 64, maxX: 560, minY: 415, maxY: 578 };
+
 export class AgentSprite extends Phaser.GameObjects.Sprite {
   agentId: string;
   agentName: string;
@@ -27,6 +30,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private meetingSeatIndex = -1;
   private taskTitle?: string;
   private deskPos?: { x: number; y: number };
+  private wanderTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(config: AgentSpriteConfig) {
     const loungePos = config.loungeSeats[config.loungeIndex] ?? config.loungeSeats[0] ?? { x: 130, y: 520 };
@@ -114,12 +118,17 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       return;
     }
     this.scene.load.image(key, imageUrl);
-    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
-      if (this.scene && this.active) {
+    const onComplete = () => {
+      if (!this.scene || !this.active) return;
+      if (this.scene.textures.exists(key)) {
         this.setTexture(key);
         this.setDisplaySize(80, 80);
+      } else {
+        // 이 배치에 포함되지 않은 경우 — 다음 COMPLETE에서 재시도
+        this.scene.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
       }
-    });
+    };
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
     this.scene.load.start();
   }
 
@@ -144,7 +153,50 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.moveToTarget();
   }
 
+  private stopWander() {
+    if (this.wanderTimer) {
+      this.wanderTimer.remove(false);
+      this.wanderTimer = null;
+    }
+  }
+
+  private scheduleWander() {
+    if (this.currentStatus !== "idle") return;
+
+    this.wanderTimer = this.scene.time.addEvent({
+      delay: Phaser.Math.Between(2500, 6000),
+      callback: () => {
+        this.wanderTimer = null;
+        if (this.currentStatus !== "idle") return;
+        const b = LOUNGE_BOUNDS;
+
+        const tx = Phaser.Math.Between(b.minX, b.maxX);
+        const ty = Phaser.Math.Between(b.minY, b.maxY);
+
+        this.scene.tweens.add({
+          targets: this,
+          x: tx,
+          y: ty,
+          duration: Phaser.Math.Between(900, 2000),
+          ease: "Sine.easeInOut",
+          onUpdate: () => {
+            this.label.setPosition(this.x, this.y - 50);
+            this.tooltip.setPosition(this.x, this.y - 70);
+          },
+          onComplete: () => {
+            this.label.setPosition(this.x, this.y - 50);
+            this.tooltip.setPosition(this.x, this.y - 70);
+            if (this.currentStatus === "idle") this.scheduleWander();
+          },
+        });
+      },
+    });
+  }
+
   private moveToTarget() {
+    this.stopWander();
+    this.scene.tweens.killTweensOf(this);
+
     const target = this.getTargetPosition(this.currentStatus);
     this.scene.tweens.add({
       targets: this,
@@ -160,6 +212,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
         this.playAnimation();
+        this.scheduleWander();
       },
     });
   }
@@ -177,6 +230,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   override destroy(fromScene?: boolean) {
+    this.stopWander();
     this.label.destroy();
     this.tooltip.destroy();
     super.destroy(fromScene);
