@@ -430,6 +430,7 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
 
   async function sendMessage(text: string) {
     setSending(true);
+    console.log(`[chat] → sending to agent ${agent.agentId}:`, text);
 
     try {
       const response = await fetch(`/api/agents/${agent.agentId}/chat`, {
@@ -438,10 +439,15 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
         body: JSON.stringify({ prompt: text }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || "Failed to get response");
+      if (!response.ok) {
+        console.error(`[chat] ← HTTP ${response.status}:`, data);
+        throw new Error(data?.error || "Failed to get response");
+      }
+      console.log(`[chat] ← response:`, data.content);
       setMessages((prev) => [...prev, { role: "assistant", content: data.content as string }]);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "응답을 받지 못했습니다.";
+      console.error(`[chat] ← error:`, errMsg);
       setMessages((prev) =>
         prev.map((m, i) =>
           i === prev.length - 1 && m.role === "user" ? { ...m, failed: true, failedReason: errMsg } : m,
