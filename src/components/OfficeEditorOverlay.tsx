@@ -14,8 +14,13 @@ const PROP_BUTTONS: { type: PropType; label: string; color: string }[] = [
   { type: "lounge_table", label: "라운지 테이블", color: "#c89060" },
   { type: "meeting_table", label: "미팅 테이블", color: "#c08040" },
   { type: "plant", label: "화분", color: "#4caf50" },
-  { type: "bookshelf", label: "책장", color: "#b08050" },
-  { type: "whiteboard", label: "화이트보드", color: "#90a8d8" },
+  { type: "bookshelf",      label: "책장",      color: "#b08050" },
+  { type: "whiteboard",     label: "화이트보드", color: "#90a8d8" },
+  { type: "coffee_machine", label: "커피머신",   color: "#c87840" },
+  { type: "water_cooler",   label: "정수기",     color: "#4a9eff" },
+  { type: "long_sofa",      label: "긴 소파",    color: "#c8884a" },
+  { type: "tv",             label: "TV",         color: "#4a5568" },
+  { type: "filing_cabinet", label: "파일 캐비닛", color: "#7a8090" },
 ];
 
 export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {

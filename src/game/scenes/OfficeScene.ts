@@ -16,10 +16,15 @@ const PROP_SIZE: Record<PropType, { w: number; h: number }> = {
   meeting_chair: { w: 1, h: 1 },
   sofa:          { w: 1, h: 1 },
   lounge_table:  { w: 1, h: 1 },
-  meeting_table: { w: 2, h: 2 },
-  plant:         { w: 1, h: 1 },
-  bookshelf:     { w: 2, h: 1 },
-  whiteboard:    { w: 1, h: 1 },
+  meeting_table:  { w: 2, h: 2 },
+  plant:          { w: 1, h: 1 },
+  bookshelf:      { w: 2, h: 1 },
+  whiteboard:     { w: 1, h: 1 },
+  coffee_machine: { w: 1, h: 1 },
+  water_cooler:   { w: 1, h: 1 },
+  long_sofa:      { w: 2, h: 1 },
+  tv:             { w: 2, h: 1 },
+  filing_cabinet: { w: 1, h: 1 },
 };
 
 function propCenter(col: number, row: number, pw: number, ph: number): { x: number; y: number } {
@@ -428,6 +433,132 @@ export class OfficeScene extends Phaser.Scene {
     };
   }
 
+  private drawCoffeeMachineAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 본체
+    g.fillStyle(0x252530, 1);
+    g.fillRoundedRect(x - 20, y - 24, 40, 44, 5);
+    // 물탱크 (반투명 파란색)
+    g.fillStyle(0x3a7aaa, 0.75);
+    g.fillRect(x - 10, y - 36, 20, 14);
+    g.fillStyle(0x3a7aaa, 0.75);
+    g.fillEllipse(x, y - 22, 20, 8);
+    g.fillStyle(0x3a7aaa, 0.75);
+    g.fillEllipse(x, y - 36, 20, 8);
+    g.fillStyle(0x88ccee, 0.35);
+    g.fillEllipse(x - 2, y - 37, 9, 4);
+    // 컨트롤 패널
+    g.fillStyle(0x151520, 1);
+    g.fillRoundedRect(x - 16, y - 8, 32, 16, 3);
+    // 버튼 3개
+    g.fillStyle(0xff6b6b, 1); g.fillCircle(x - 8, y, 3);
+    g.fillStyle(0x4caf50, 1); g.fillCircle(x,     y, 3);
+    g.fillStyle(0x4a9eff, 1); g.fillCircle(x + 8, y, 3);
+    // 드립 트레이
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRoundedRect(x - 18, y + 10, 36, 8, 3);
+    g.fillStyle(0x555568, 0.5);
+    for (let i = -10; i <= 10; i += 6) g.fillRect(x + i - 1, y + 11, 3, 5);
+  }
+
+  private drawWaterCoolerAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 물통 원기둥
+    g.fillStyle(0x3a8aee, 0.6);
+    g.fillRect(x - 11, y - 34, 22, 16);
+    g.fillStyle(0x3a8aee, 0.6);
+    g.fillEllipse(x, y - 18, 22, 9);
+    g.fillStyle(0x3a8aee, 0.6);
+    g.fillEllipse(x, y - 34, 22, 9);
+    g.fillStyle(0x88ccff, 0.3);
+    g.fillEllipse(x - 2, y - 35, 9, 4);
+    // 캡
+    g.fillStyle(0x1a55aa, 1);
+    g.fillEllipse(x, y - 38, 16, 7);
+    // 몸체
+    g.fillStyle(0xdde4ee, 1);
+    g.fillRoundedRect(x - 16, y - 16, 32, 36, 5);
+    // 하단 짙은 베이스
+    g.fillStyle(0xbbc4d4, 1);
+    g.fillRoundedRect(x - 16, y + 12, 32, 8, { tl: 0, tr: 0, bl: 5, br: 5 });
+    // 수도꼭지 패널
+    g.fillStyle(0xc8d2e0, 1);
+    g.fillRoundedRect(x - 12, y - 6, 24, 16, 3);
+    g.fillStyle(0xff6b6b, 1); g.fillRoundedRect(x - 9, y - 2, 7, 4, 2);
+    g.fillStyle(0x4a9eff, 1); g.fillRoundedRect(x + 2, y - 2, 7, 4, 2);
+  }
+
+  private drawLongSofaAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 2x1 = 160x80 영역, 팔걸이 (양쪽)
+    g.fillStyle(0x7a4e28, 1);
+    g.fillRoundedRect(x - 72, y - 16, 10, 28, 4);
+    g.fillRoundedRect(x + 62, y - 16, 10, 28, 4);
+    // 등받이
+    g.fillStyle(0x8a5a30, 1);
+    g.fillRoundedRect(x - 64, y - 18, 128, 16, 5);
+    g.fillStyle(0xaa7a50, 0.28);
+    g.fillRoundedRect(x - 62, y - 16, 124, 7, 4);
+    // 쿠션 3개
+    for (let i = -1; i <= 1; i++) {
+      const cx = x + i * 42;
+      g.fillStyle(0xaa7a50, 1);
+      g.fillRoundedRect(cx - 19, y - 4, 38, 18, 5);
+      g.fillStyle(0xca9a70, 0.38);
+      g.fillRoundedRect(cx - 17, y - 2, 30, 6, 4);
+    }
+  }
+
+  private drawTvAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 2x1 = 160x80 영역, 스탠드
+    g.fillStyle(0x3a3a45, 1);
+    g.fillRect(x - 3, y + 14, 6, 12);
+    g.fillRoundedRect(x - 22, y + 24, 44, 6, 3);
+    // 베젤
+    g.fillStyle(0x1a1a22, 1);
+    g.fillRoundedRect(x - 68, y - 26, 136, 42, 6);
+    // 화면
+    g.fillStyle(0x0c1828, 1);
+    g.fillRoundedRect(x - 63, y - 22, 126, 34, 3);
+    // 바 차트
+    g.fillStyle(0x1a3a6a, 0.9);
+    g.fillRect(x - 58, y - 18, 52, 26);
+    const bars = [6, 12, 18, 10, 14, 8];
+    bars.forEach((h, i) => {
+      g.fillStyle(0x4a9eff, 0.85);
+      g.fillRect(x - 55 + i * 8, y + 6 - h, 5, h);
+    });
+    // 텍스트 라인
+    g.fillStyle(0x88bbff, 0.55);
+    g.fillRect(x + 2, y - 16, 52, 3);
+    g.fillRect(x + 2, y - 9,  40, 3);
+    g.fillRect(x + 2, y - 2,  46, 3);
+    g.fillRect(x + 2, y + 5,  32, 3);
+    // 파워 LED
+    g.fillStyle(0x4caf50, 1);
+    g.fillCircle(x + 58, y + 12, 2);
+  }
+
+  private drawFilingCabinetAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 본체
+    g.fillStyle(0x7a8090, 1);
+    g.fillRoundedRect(x - 24, y - 32, 48, 56, 4);
+    // 측면 음영
+    g.fillStyle(0x000000, 0.1);
+    g.fillRoundedRect(x + 18, y - 32, 6, 56, { tl: 0, tr: 4, bl: 0, br: 4 });
+    // 상단 엣지 하이라이트
+    g.fillStyle(0x9aaabb, 1);
+    g.fillRect(x - 24, y - 32, 48, 4);
+    // 서랍 3칸
+    for (let i = 0; i < 3; i++) {
+      const dy = y - 24 + i * 18;
+      g.fillStyle(0x8a9aaa, 1);
+      g.fillRoundedRect(x - 20, dy, 40, 14, 2);
+      // 손잡이
+      g.fillStyle(0x4a5060, 1);
+      g.fillRoundedRect(x - 7, dy + 5, 14, 4, 2);
+      g.fillStyle(0xaabbcc, 0.45);
+      g.fillRect(x - 5, dy + 6, 10, 1);
+    }
+  }
+
   // ── PROP OBJECTS ─────────────────────────────────────────────────────────────
 
   private renderProps(config: OfficeConfig) {
@@ -446,7 +577,12 @@ export class OfficeScene extends Phaser.Scene {
     else if (type === "meeting_table") this.drawMeetingTableAt(g, x, y);
     else if (type === "plant") this.drawPlantAt(g, x, y);
     else if (type === "bookshelf") this.drawBookshelfAt(g, x, y);
-    else if (type === "whiteboard") this.drawWhiteboardAt(g, x, y);
+    else if (type === "whiteboard")     this.drawWhiteboardAt(g, x, y);
+    else if (type === "coffee_machine") this.drawCoffeeMachineAt(g, x, y);
+    else if (type === "water_cooler")   this.drawWaterCoolerAt(g, x, y);
+    else if (type === "long_sofa")      this.drawLongSofaAt(g, x, y);
+    else if (type === "tv")             this.drawTvAt(g, x, y);
+    else if (type === "filing_cabinet") this.drawFilingCabinetAt(g, x, y);
   }
 
   private createPropObject(prop: OfficeProp): Phaser.GameObjects.Container {
