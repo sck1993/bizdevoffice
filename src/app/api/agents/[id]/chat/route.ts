@@ -1,12 +1,17 @@
-import { loadAll } from "../../../../../server/agent-file-store";
 import type { AgentConfig } from "@/types/agent";
 import { jsonError } from "@/lib/route-utils";
+import { loadAll } from "../../../../../server/agent-file-store";
+import { gateway } from "../../../../../server/gateway-manager";
 
 export const runtime = "nodejs";
 
-/** ws://host:port  →  http://host:port */
-function wsUrlToHttp(wsUrl: string): string {
-  return wsUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
+function buildAgentChatSessionKey(agentId: string) {
+  return `clawoffice:chat:${agentId}`;
+}
+
+function isChatTimeoutError(error: unknown) {
+  return error instanceof Error
+    && (error.message === "chat.send timeout" || error.message.includes("RPC timeout:"));
 }
 
 export async function POST(
@@ -27,55 +32,33 @@ export async function POST(
   }
 
   const agents = loadAll() as AgentConfig[];
-  const agent = agents.find((a) => a.agentId === agentId);
+  const agent = agents.find((item) => item.agentId === agentId);
   if (!agent) {
     return jsonError(404, "Agent not found");
   }
 
-  const openclawWsUrl = process.env.OPENCLAW_URL;
-  if (!openclawWsUrl) {
-    return jsonError(503, "OPENCLAW_URL is not configured");
+  if (!gateway.isConnected()) {
+    return jsonError(503, "Gateway not connected");
   }
 
-  const baseUrl = wsUrlToHttp(openclawWsUrl);
-  const sessionKey = `clawoffice:chat:${agentId}`;
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.OPENCLAW_GATEWAY_TOKEN;
-  if (token) headers["x-openclaw-token"] = token;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
-
   try {
-    const response = await fetch(`${baseUrl}/v1/responses`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ agentId, prompt, sessionKey }),
-      signal: controller.signal,
-    });
+    const content = await gateway.chatSend(
+      agentId,
+      buildAgentChatSessionKey(agentId),
+      prompt,
+    );
 
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const errMsg = typeof data?.error === "string" ? data.error : `OpenClaw error ${response.status}`;
-      console.error("[chat] OpenClaw /v1/responses error:", response.status, data);
-      return jsonError(502, errMsg);
-    }
-
-    const content = typeof data.response === "string" ? data.response : "";
-    if (!content) {
-      console.error("[chat] OpenClaw returned empty/missing response field:", data);
-      return jsonError(502, "OpenClaw returned empty response");
-    }
     return Response.json({ content });
   } catch (error) {
-    if ((error as { name?: string })?.name === "AbortError") {
+    if (error instanceof Error && error.message === "Gateway not connected") {
+      return jsonError(503, "Gateway not connected");
+    }
+
+    if (isChatTimeoutError(error)) {
       return jsonError(504, "Agent response timed out");
     }
-    console.error("[chat] OpenClaw fetch error:", error);
-    return jsonError(502, "Failed to reach OpenClaw agent");
-  } finally {
-    clearTimeout(timeout);
+
+    console.error("[chat] gateway chatSend error:", error);
+    return jsonError(502, "Agent chat failed");
   }
 }

@@ -111,6 +111,9 @@ class OpenClawGateway extends EventEmitter {
     this._connectTimer = null;
     this._deviceIdentity = null;
     this._pending = new Map();
+    this._chatStreams = new Map();
+    this._sessionQueues = new Map();
+    this._sessionGenerations = new Map();
     this._rpcTimeout = 30000;
   }
 
@@ -167,6 +170,8 @@ class OpenClawGateway extends EventEmitter {
         pending.reject(new Error(`Gateway disconnected before response: ${id}`));
       }
       this._pending.clear();
+      this._clearChatStreams();
+      this._sessionQueues.clear();
       this.ws = null;
       if (this._connectTimer) {
         clearTimeout(this._connectTimer);
@@ -247,19 +252,128 @@ class OpenClawGateway extends EventEmitter {
         return reject(new Error("Gateway not connected"));
       }
 
-      const id = randomUUID();
+      const id = this._sendRequest(method, params);
       const timer = setTimeout(() => {
         this._pending.delete(id);
         reject(new Error(`RPC timeout: ${method}`));
       }, this._rpcTimeout);
 
       this._pending.set(id, { resolve, reject, timer });
-      this.ws.send(JSON.stringify({ type: "req", id, method, params }));
     });
+  }
+
+  _sendRequest(method, params, requestId = randomUUID()) {
+    if (!this.isConnected()) {
+      throw new Error("Gateway not connected");
+    }
+
+    this.ws.send(JSON.stringify({ type: "req", id: requestId, method, params }));
+    return requestId;
   }
 
   isConnected() {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  chatSend(agentId, baseSessionKey, message, onDelta) {
+    const normalizedBase = baseSessionKey.startsWith("agent:")
+      ? baseSessionKey
+      : `agent:${agentId}:${baseSessionKey}`;
+    const tail = this._sessionQueues.get(normalizedBase) ?? Promise.resolve();
+    const request = tail.then(
+      () => this._executeChatSend(normalizedBase, message, onDelta),
+      () => this._executeChatSend(normalizedBase, message, onDelta),
+    );
+
+    this._sessionQueues.set(
+      normalizedBase,
+      request.then(() => {}, () => {}),
+    );
+
+    return request;
+  }
+
+  _executeChatSend(normalizedBase, message, onDelta) {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected()) {
+        reject(new Error("Gateway not connected"));
+        return;
+      }
+
+      const generation = this._sessionGenerations.get(normalizedBase) ?? 0;
+      const sessionKey = generation === 0 ? normalizedBase : `${normalizedBase}:g${generation}`;
+      const requestId = randomUUID();
+      const timer = setTimeout(() => {
+        this._chatStreams.delete(sessionKey);
+        this._advanceSessionGeneration(normalizedBase, generation);
+        reject(new Error("chat.send timeout"));
+      }, 180000);
+
+      this._chatStreams.set(sessionKey, {
+        normalizedBase,
+        generation,
+        requestId,
+        resolve,
+        reject,
+        timer,
+        onDelta,
+        chunks: [],
+      });
+
+      try {
+        this._sendRequest("chat.send", {
+          sessionKey,
+          message,
+          idempotencyKey: randomUUID(),
+        }, requestId);
+      } catch (error) {
+        clearTimeout(timer);
+        this._chatStreams.delete(sessionKey);
+        reject(error);
+      }
+    });
+  }
+
+  _clearChatStreams(reason = "Gateway disconnected") {
+    for (const [sessionKey, stream] of this._chatStreams.entries()) {
+      clearTimeout(stream.timer);
+      stream.reject(new Error(reason || `Gateway disconnected before chat completed: ${sessionKey}`));
+    }
+    this._chatStreams.clear();
+  }
+
+  _findChatStreamByRequestId(requestId) {
+    for (const [sessionKey, stream] of this._chatStreams.entries()) {
+      if (stream.requestId === requestId) {
+        return { sessionKey, stream };
+      }
+    }
+    return null;
+  }
+
+  _extractChatContent(message, fallbackChunks) {
+    const content = message?.content;
+    if (Array.isArray(content)) {
+      const text = content
+        .filter((item) => item?.type === "text" && typeof item.text === "string")
+        .map((item) => item.text)
+        .join("");
+      if (text) return text;
+    }
+    return fallbackChunks.join("");
+  }
+
+  _extractChatErrorMessage(payload) {
+    const error = payload?.error;
+    if (typeof error?.message === "string" && error.message) return error.message;
+    if (typeof error === "string" && error) return error;
+    if (typeof payload?.errorMessage === "string" && payload.errorMessage) return payload.errorMessage;
+    return "chat error";
+  }
+
+  _advanceSessionGeneration(normalizedBase, generation) {
+    const current = this._sessionGenerations.get(normalizedBase) ?? 0;
+    this._sessionGenerations.set(normalizedBase, Math.max(current, generation + 1));
   }
 
   _handleMessage(msg) {
@@ -303,6 +417,22 @@ class OpenClawGateway extends EventEmitter {
       return;
     }
 
+    if (msg?.type === "res") {
+      const chatMatch = this._findChatStreamByRequestId(msg.id);
+      if (chatMatch) {
+        if (!msg.ok) {
+          clearTimeout(chatMatch.stream.timer);
+          this._chatStreams.delete(chatMatch.sessionKey);
+          this._advanceSessionGeneration(
+            chatMatch.stream.normalizedBase,
+            chatMatch.stream.generation,
+          );
+          chatMatch.stream.reject(new Error(this._extractChatErrorMessage(msg)));
+        }
+        return;
+      }
+    }
+
     // Keepalive tick — ignore silently
     if (msg?.type === "event" && msg?.event === "tick") {
       return;
@@ -333,8 +463,33 @@ class OpenClawGateway extends EventEmitter {
         }
         // assistant delta events are frequent — emit working but don't log each one
         if (p.stream === "assistant") {
+          if (typeof p.data?.delta === "string" && p.sessionKey) {
+            const stream = this._chatStreams.get(p.sessionKey);
+            if (stream) {
+              stream.chunks.push(p.data.delta);
+              stream.onDelta?.(p.data.delta);
+            }
+          }
           this.emit("agent:working", { agentId, taskTitle: p.sessionKey });
         }
+      }
+      return;
+    }
+
+    if (msg?.type === "event" && msg?.event === "chat" && msg?.payload) {
+      const p = msg.payload;
+      const stream = p.sessionKey ? this._chatStreams.get(p.sessionKey) : null;
+      if (!stream) return;
+
+      if (p.state === "final") {
+        clearTimeout(stream.timer);
+        this._chatStreams.delete(p.sessionKey);
+        stream.resolve(this._extractChatContent(p.message, stream.chunks));
+      } else if (p.state === "error") {
+        clearTimeout(stream.timer);
+        this._chatStreams.delete(p.sessionKey);
+        this._advanceSessionGeneration(stream.normalizedBase, stream.generation);
+        stream.reject(new Error(this._extractChatErrorMessage(p)));
       }
       return;
     }
@@ -359,6 +514,8 @@ class OpenClawGateway extends EventEmitter {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    this._clearChatStreams("Gateway disconnected");
+    this._sessionQueues.clear();
     if (this.ws) this.ws.close();
   }
 
