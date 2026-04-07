@@ -1,6 +1,7 @@
 import type { AgentConfig } from "@/types/agent";
 import { jsonError } from "@/lib/route-utils";
 import { loadAll } from "../../../../../server/agent-file-store";
+import { appendMessages, loadMessages } from "../../../../../server/chat-file-store";
 import { gateway } from "../../../../../server/gateway-manager";
 
 export const runtime = "nodejs";
@@ -12,6 +13,19 @@ function buildAgentChatSessionKey(agentId: string) {
 function isChatTimeoutError(error: unknown) {
   return error instanceof Error
     && (error.message === "chat.send timeout" || error.message.includes("RPC timeout:"));
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id: agentId } = await context.params;
+  const agents = loadAll() as AgentConfig[];
+  if (!agents.find((item) => item.agentId === agentId)) {
+    return jsonError(404, "Agent not found");
+  }
+  const messages = loadMessages(agentId);
+  return Response.json({ messages });
 }
 
 export async function POST(
@@ -47,6 +61,15 @@ export async function POST(
       buildAgentChatSessionKey(agentId),
       prompt,
     );
+
+    try {
+      await appendMessages(agentId, [
+        { role: "user", content: prompt },
+        { role: "assistant", content },
+      ]);
+    } catch (saveError) {
+      console.error("[chat] failed to save messages:", saveError);
+    }
 
     return Response.json({ content });
   } catch (error) {

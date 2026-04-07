@@ -221,7 +221,6 @@ export class OfficeScene extends Phaser.Scene {
     this.drawWindow(390, 140, 160, 74);
     this.drawWindow(680, 140, 160, 74);
     this.drawWindow(980, 140, 160, 74);
-    this.drawWindow(1158, 140, 110, 74);
 
     const ceiling = this.add.graphics();
     ceiling.fillStyle(0x181d2c, 1);
@@ -231,7 +230,7 @@ export class OfficeScene extends Phaser.Scene {
     ceilEdge.fillStyle(0x252d42, 1);
     ceilEdge.fillRect(14, 128, GAME_WIDTH - 28, 6);
 
-    const lightXList = [200, 470, 740, 1010, 1200];
+    const lightXList = [200, 470, 740, 1010];
     lightXList.forEach((lx) => {
       const housing = this.add.graphics();
       housing.fillStyle(0x1c2538, 1);

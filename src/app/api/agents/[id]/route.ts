@@ -6,6 +6,7 @@ import { agentStateStore } from "../../../../server/agent-state-store";
 import { loadAll, saveAll, withLock } from "../../../../server/agent-file-store";
 import { gateway } from "../../../../server/gateway-manager";
 import { AgentRouteError, clawGlobal, isTimeoutError, jsonError } from "@/lib/route-utils";
+import { removeChat } from "../../../../server/chat-file-store";
 
 export const runtime = "nodejs";
 
@@ -171,6 +172,12 @@ export async function DELETE(
 
     agentStateStore.delete(agentId);
     void removeProfileImage(removedAgent.profileImage);
+
+    try {
+      await removeChat(agentId);
+    } catch (e) {
+      console.error("[agents] failed to remove chat file:", agentId, e);
+    }
 
     clawGlobal.__clawIo?.emit("agent:removed", { agentId });
     return new Response(null, { status: 204 });

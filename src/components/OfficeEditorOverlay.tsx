@@ -92,6 +92,8 @@ export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {
         <div
           style={{
             display: "flex",
+            flex: 1,
+            minWidth: 0,
             gap: 6,
             overflowX: "auto",
             scrollbarWidth: "none",
@@ -125,6 +127,8 @@ export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {
         <button
           onClick={handleSave}
           style={{
+            flexShrink: 0,
+            whiteSpace: "nowrap",
             padding: "4px 14px",
             borderRadius: 8,
             border: "1px solid #5ec99a88",
@@ -141,6 +145,9 @@ export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {
         <button
           onClick={handleCancel}
           style={{
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+            marginLeft: 6,
             padding: "4px 14px",
             borderRadius: 8,
             border: "1px solid #ff6b6b88",

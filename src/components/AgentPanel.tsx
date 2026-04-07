@@ -437,13 +437,29 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(`/api/agents/${agent.agentId}/chat`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((data: { messages?: ChatMessage[] }) => {
+        if (Array.isArray(data.messages)) setMessages(data.messages);
+      })
+      .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        console.error("[chat] failed to load history:", e);
+      })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [agent.agentId]);
 
   async function sendMessage(text: string) {
     setSending(true);
@@ -598,7 +614,18 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
           gap: 10,
         }}
       >
-        {messages.length === 0 && !sending ? (
+        {loading ? (
+          <div
+            style={{
+              margin: "auto",
+              textAlign: "center",
+              color: "rgba(228, 236, 255, 0.35)",
+              fontSize: 13,
+            }}
+          >
+            대화 기록 불러오는 중...
+          </div>
+        ) : messages.length === 0 && !sending ? (
           <div
             style={{
               margin: "auto",
@@ -744,7 +771,7 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
             onKeyDown={handleKeyDown}
             placeholder={`${agent.name}에게 메시지...`}
             rows={1}
-            disabled={sending}
+            disabled={loading || sending}
             style={{
               flex: 1,
               resize: "none",
