@@ -135,6 +135,7 @@ export class OfficeScene extends Phaser.Scene {
     };
 
     const handleOfficeConfig = (data: unknown) => {
+      if (this.isEditMode) return;
       const config = data as OfficeConfig;
       this.currentConfig = config;
       this.meetingOccupied = config.props.filter((p) => p.type === "meeting_chair").map(() => null);
