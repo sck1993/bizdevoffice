@@ -404,6 +404,8 @@ function AgentEditorModal({
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  failed?: boolean;
+  failedReason?: string;
 }
 
 interface ChatAgent {
@@ -418,39 +420,53 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || sending) return;
-
-    const newMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
-    setMessages(newMessages);
-    setInput("");
+  async function sendMessage(text: string) {
     setSending(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/agents/${agent.agentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ prompt: text }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "Failed to get response");
       setMessages((prev) => [...prev, { role: "assistant", content: data.content as string }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "응답을 받지 못했습니다.");
+      const errMsg = err instanceof Error ? err.message : "응답을 받지 못했습니다.";
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === prev.length - 1 && m.role === "user" ? { ...m, failed: true, failedReason: errMsg } : m,
+        ),
+      );
     } finally {
       setSending(false);
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
+  }
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || sending) return;
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setInput("");
+    await sendMessage(text);
+  }
+
+  async function handleRetry(index: number) {
+    const msg = messages[index];
+    if (!msg || msg.role !== "user") return;
+    // 실패 메시지 복구 후 재전송
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, failed: false } : m)));
+    await sendMessage(msg.content);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -581,39 +597,75 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
             key={i}
             style={{
               display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-              alignItems: "flex-end",
-              gap: 7,
+              flexDirection: "column",
+              alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+              gap: 4,
             }}
           >
-            {msg.role === "assistant" ? (
-              <div style={{ ...avatarStyle, width: 24, height: 24, fontSize: 9, marginBottom: 2 }}>
-                {!agent.profileImage ? agent.name.slice(0, 1).toUpperCase() : null}
-              </div>
-            ) : null}
             <div
               style={{
-                maxWidth: "80%",
-                borderRadius:
-                  msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                padding: "9px 12px",
-                fontSize: 13,
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                background:
-                  msg.role === "user"
-                    ? "linear-gradient(135deg, rgba(77, 176, 255, 0.28), rgba(99, 156, 255, 0.22))"
-                    : "rgba(255, 255, 255, 0.06)",
-                border:
-                  msg.role === "user"
-                    ? "1px solid rgba(77, 176, 255, 0.3)"
-                    : "1px solid rgba(255, 255, 255, 0.07)",
-                color: "#edf4ff",
+                display: "flex",
+                justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                alignItems: "flex-end",
+                gap: 7,
               }}
             >
-              {msg.content}
+              {msg.role === "assistant" ? (
+                <div style={{ ...avatarStyle, width: 24, height: 24, fontSize: 9, marginBottom: 2 }}>
+                  {!agent.profileImage ? agent.name.slice(0, 1).toUpperCase() : null}
+                </div>
+              ) : null}
+              <div
+                style={{
+                  maxWidth: "80%",
+                  borderRadius:
+                    msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  background:
+                    msg.role === "user"
+                      ? msg.failed
+                        ? "rgba(255, 87, 87, 0.12)"
+                        : "linear-gradient(135deg, rgba(77, 176, 255, 0.28), rgba(99, 156, 255, 0.22))"
+                      : "rgba(255, 255, 255, 0.06)",
+                  border:
+                    msg.role === "user"
+                      ? msg.failed
+                        ? "1px solid rgba(255, 87, 87, 0.4)"
+                        : "1px solid rgba(77, 176, 255, 0.3)"
+                      : "1px solid rgba(255, 255, 255, 0.07)",
+                  color: msg.failed ? "#ffb3b3" : "#edf4ff",
+                  opacity: msg.failed ? 0.85 : 1,
+                }}
+              >
+                {msg.content}
+              </div>
             </div>
+            {msg.failed ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingRight: 2 }}>
+                <span style={{ fontSize: 11, color: "rgba(255, 130, 130, 0.8)" }}>전송 실패</span>
+                <button
+                  type="button"
+                  onClick={() => void handleRetry(i)}
+                  disabled={sending}
+                  style={{
+                    fontSize: 11,
+                    color: "#ffb3b3",
+                    background: "transparent",
+                    border: "1px solid rgba(255, 130, 130, 0.35)",
+                    borderRadius: 999,
+                    padding: "2px 8px",
+                    cursor: sending ? "not-allowed" : "pointer",
+                    opacity: sending ? 0.5 : 1,
+                  }}
+                >
+                  재전송
+                </button>
+              </div>
+            ) : null}
           </div>
         ))}
 
@@ -636,21 +688,6 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
             >
               ···
             </div>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div
-            style={{
-              borderRadius: 12,
-              padding: "8px 12px",
-              background: "rgba(255, 87, 87, 0.12)",
-              border: "1px solid rgba(255, 87, 87, 0.22)",
-              color: "#ffb3b3",
-              fontSize: 12,
-            }}
-          >
-            {error}
           </div>
         ) : null}
 
