@@ -153,8 +153,9 @@ export function GameWrapper() {
         style={{
           flexShrink: 0,
           width: 340,
-          overflowY: "auto",
-          overflowX: "hidden",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <AgentPanel />

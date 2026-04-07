@@ -60,6 +60,17 @@ export class OfficeScene extends Phaser.Scene {
 
     const handleSnapshot = (data: unknown) => {
       const { agents } = data as AgentsSnapshot;
+      const snapshotIds = new Set(agents.map((a) => a.agentId));
+
+      // 스냅샷에 없는 스프라이트 제거 (삭제된 에이전트 정리)
+      this.agents.forEach((sprite, agentId) => {
+        if (!snapshotIds.has(agentId)) {
+          this.releaseMeetingSeat(agentId);
+          sprite.destroy();
+          this.agents.delete(agentId);
+        }
+      });
+
       agents.forEach((agent) => {
         const existing = this.agents.get(agent.agentId);
         if (!existing) {
