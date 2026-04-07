@@ -608,6 +608,7 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
                 justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
                 alignItems: "flex-end",
                 gap: 7,
+                width: "100%",
               }}
             >
               {msg.role === "assistant" ? (

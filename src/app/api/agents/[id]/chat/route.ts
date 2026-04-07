@@ -63,7 +63,12 @@ export async function POST(
       return jsonError(502, errMsg);
     }
 
-    return Response.json({ content: data.response ?? "" });
+    const content = typeof data.response === "string" ? data.response : "";
+    if (!content) {
+      console.error("[chat] OpenClaw returned empty/missing response field:", data);
+      return jsonError(502, "OpenClaw returned empty response");
+    }
+    return Response.json({ content });
   } catch (error) {
     if ((error as { name?: string })?.name === "AbortError") {
       return jsonError(504, "Agent response timed out");
