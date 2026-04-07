@@ -10,8 +10,12 @@ import { AgentRouteError, clawGlobal, isTimeoutError, jsonError } from "@/lib/ro
 export const runtime = "nodejs";
 
 function resolveUploadPath(profileImage: string | null) {
-  if (!profileImage?.startsWith("/uploads/")) return null;
-  return path.join(process.cwd(), "public", profileImage.replace(/^\/+/, ""));
+  if (!profileImage) return null;
+  if (profileImage.startsWith("/api/uploads/")) {
+    const filename = profileImage.replace("/api/uploads/", "");
+    return path.join(process.cwd(), "data", "uploads", filename);
+  }
+  return null;
 }
 
 async function removeProfileImage(profileImage: string | null) {
