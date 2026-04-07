@@ -73,8 +73,9 @@ export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
-          gap: 8,
           alignItems: "center",
+          gap: 0,
+          maxWidth: "calc(100% - 40px)",
           backgroundColor: "rgba(10, 14, 26, 0.88)",
           border: "1px solid rgba(74, 158, 255, 0.4)",
           borderRadius: 12,
@@ -83,30 +84,43 @@ export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {
           backdropFilter: "blur(8px)",
         }}
       >
-        <span style={{ color: "#88c4ff", fontSize: 13, fontWeight: 600, marginRight: 4 }}>
+        <span style={{ color: "#88c4ff", fontSize: 13, fontWeight: 600, flexShrink: 0, marginRight: 10 }}>
           오피스 편집
         </span>
 
-        {PROP_BUTTONS.map(({ type, label, color }) => (
-          <button
-            key={type}
-            onClick={() => EventBus.emit("office:add-prop", { type })}
-            style={{
-              padding: "4px 10px",
-              borderRadius: 8,
-              border: `1px solid ${color}88`,
-              backgroundColor: `${color}22`,
-              color,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            + {label}
-          </button>
-        ))}
+        {/* 소품 버튼 — 좌우 스크롤 */}
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: 1,
+          }}
+        >
+          {PROP_BUTTONS.map(({ type, label, color }) => (
+            <button
+              key={type}
+              onClick={() => EventBus.emit("office:add-prop", { type })}
+              style={{
+                flexShrink: 0,
+                padding: "4px 10px",
+                borderRadius: 8,
+                border: `1px solid ${color}88`,
+                backgroundColor: `${color}22`,
+                color,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              + {label}
+            </button>
+          ))}
+        </div>
 
-        <div style={{ width: 1, height: 20, backgroundColor: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
+        <div style={{ width: 1, height: 20, flexShrink: 0, backgroundColor: "rgba(255,255,255,0.15)", margin: "0 10px" }} />
 
         <button
           onClick={handleSave}
