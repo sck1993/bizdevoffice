@@ -1,4 +1,4 @@
-export type PropType = "desk" | "meeting_chair" | "sofa";
+export type PropType = "desk" | "meeting_chair" | "sofa" | "lounge_table" | "meeting_table" | "plant" | "bookshelf" | "whiteboard";
 
 export interface OfficeProp {
   id: string;

@@ -8,9 +8,14 @@ interface OfficeEditorOverlayProps {
 }
 
 const PROP_BUTTONS: { type: PropType; label: string; color: string }[] = [
-  { type: "desk", label: "데스크 추가", color: "#4a9eff" },
-  { type: "meeting_chair", label: "회의 의자 추가", color: "#5ec99a" },
-  { type: "sofa", label: "소파 추가", color: "#ff9a56" },
+  { type: "desk", label: "데스크", color: "#4a9eff" },
+  { type: "meeting_chair", label: "회의 의자", color: "#5ec99a" },
+  { type: "sofa", label: "소파", color: "#ff9a56" },
+  { type: "lounge_table", label: "라운지 테이블", color: "#c89060" },
+  { type: "meeting_table", label: "미팅 테이블", color: "#c08040" },
+  { type: "plant", label: "화분", color: "#4caf50" },
+  { type: "bookshelf", label: "책장", color: "#b08050" },
+  { type: "whiteboard", label: "화이트보드", color: "#90a8d8" },
 ];
 
 export function OfficeEditorOverlay({ onClose }: OfficeEditorOverlayProps) {

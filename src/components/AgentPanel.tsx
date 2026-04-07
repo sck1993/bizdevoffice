@@ -7,6 +7,23 @@ import type { AgentConfig, AgentRemoved, AgentState, AgentStateChanged, AgentsSn
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
+function renderMarkdown(text: string): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  const lines = text.split("\n");
+  lines.forEach((line, li) => {
+    if (li > 0) result.push(<br key={`br-${li}`} />);
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    parts.forEach((part, pi) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        result.push(<strong key={`b-${li}-${pi}`}>{part.slice(2, -2)}</strong>);
+      } else {
+        result.push(part);
+      }
+    });
+  });
+  return result;
+}
+
 function statusLabel(state: AgentState["state"], taskTitle?: string) {
   if (state === "working") return taskTitle ? `working: ${taskTitle}` : "working";
   if (state === "meeting") return "meeting";
@@ -648,7 +665,7 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
                   opacity: msg.failed ? 0.85 : 1,
                 }}
               >
-                {msg.content}
+                {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
               </div>
             </div>
             {msg.failed ? (

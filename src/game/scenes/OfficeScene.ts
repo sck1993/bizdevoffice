@@ -14,12 +14,22 @@ const PROP_COLORS: Record<PropType, number> = {
   desk: 0x4a9eff,
   meeting_chair: 0x5ec99a,
   sofa: 0xff9a56,
+  lounge_table: 0xc89060,
+  meeting_table: 0xa06830,
+  plant: 0x4caf50,
+  bookshelf: 0xb08050,
+  whiteboard: 0x90a8d8,
 };
 
 const PROP_LABELS: Record<PropType, string> = {
   desk: "D",
   meeting_chair: "M",
   sofa: "S",
+  lounge_table: "LT",
+  meeting_table: "MT",
+  plant: "P",
+  bookshelf: "B",
+  whiteboard: "W",
 };
 
 export class OfficeScene extends Phaser.Scene {
@@ -302,12 +312,12 @@ export class OfficeScene extends Phaser.Scene {
     bg.fillRoundedRect(zx, zy, zw, zh, 20);
 
     const border = this.add.graphics();
-    border.lineStyle(1.5, 0x4a9eff, 0.48);
+    border.lineStyle(1.5, 0x4a9eff, 0.72);
     border.strokeRoundedRect(zx, zy, zw, zh, 20);
 
     const chip = this.add.graphics();
-    chip.fillStyle(0x4a9eff, 0.16);
-    chip.lineStyle(1, 0x4a9eff, 0.52);
+    chip.fillStyle(0x4a9eff, 0.32);
+    chip.lineStyle(1, 0x4a9eff, 0.9);
     chip.fillRoundedRect(zx + 16, zy + 14, 116, 26, 13);
     chip.strokeRoundedRect(zx + 16, zy + 14, 116, 26, 13);
     chip.setDepth(3);
@@ -315,42 +325,24 @@ export class OfficeScene extends Phaser.Scene {
     this.add.text(zx + 26, zy + 18, "Work Zone", {
       fontSize: "13px",
       fontStyle: "bold",
-      color: "#88c4ff",
+      color: "#c0deff",
     }).setDepth(3);
   }
 
   private drawMeetingZone() {
     const zx = 615, zy = 134, zw = 641, zh = 484;
-    const tableCx = zx + zw / 2;
-    const tableCy = 390;
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0e2820, 0.22);
     bg.fillRoundedRect(zx, zy, zw, zh, 20);
 
-    const tableShadow = this.add.graphics();
-    tableShadow.fillStyle(0x000000, 0.28);
-    tableShadow.fillEllipse(tableCx + 7, tableCy + 16, 310, 116);
-
-    const tableFront = this.add.graphics();
-    tableFront.fillStyle(0x3e2610, 1);
-    tableFront.fillEllipse(tableCx, tableCy + 10, 306, 112);
-
-    const tableTop = this.add.graphics();
-    tableTop.fillStyle(0x6a4c2e, 1);
-    tableTop.fillEllipse(tableCx, tableCy, 306, 108);
-
-    const tableHL = this.add.graphics();
-    tableHL.fillStyle(0xa07850, 0.4);
-    tableHL.fillEllipse(tableCx, tableCy - 12, 290, 62);
-
     const border = this.add.graphics();
-    border.lineStyle(1.5, 0x5ec99a, 0.48);
+    border.lineStyle(1.5, 0x5ec99a, 0.72);
     border.strokeRoundedRect(zx, zy, zw, zh, 20);
 
     const chip = this.add.graphics();
-    chip.fillStyle(0x5ec99a, 0.16);
-    chip.lineStyle(1, 0x5ec99a, 0.52);
+    chip.fillStyle(0x5ec99a, 0.32);
+    chip.lineStyle(1, 0x5ec99a, 0.9);
     chip.fillRoundedRect(zx + 16, zy + 14, 138, 26, 13);
     chip.strokeRoundedRect(zx + 16, zy + 14, 138, 26, 13);
     chip.setDepth(3);
@@ -358,38 +350,24 @@ export class OfficeScene extends Phaser.Scene {
     this.add.text(zx + 26, zy + 18, "Meeting Zone", {
       fontSize: "13px",
       fontStyle: "bold",
-      color: "#88d8b0",
+      color: "#b0ead0",
     }).setDepth(3);
   }
 
   private drawLoungeZone() {
     const zx = 24, zy = 378, zw = 580, zh = 240;
-    const sofaY = zy + 112;
-    const ctCx  = zx + 290;
 
     const bg = this.add.graphics();
     bg.fillStyle(0x28180e, 0.22);
     bg.fillRoundedRect(zx, zy, zw, zh, 20);
 
-    const ctShadow = this.add.graphics();
-    ctShadow.fillStyle(0x000000, 0.22);
-    ctShadow.fillRoundedRect(ctCx - 42, sofaY + 10, 84, 18, 6);
-
-    const ctTop = this.add.graphics();
-    ctTop.fillStyle(0x4a3220, 1);
-    ctTop.fillRoundedRect(ctCx - 40, sofaY - 2, 80, 22, 6);
-
-    const ctHL = this.add.graphics();
-    ctHL.fillStyle(0x7a5a3a, 0.48);
-    ctHL.fillRoundedRect(ctCx - 38, sofaY - 2, 76, 8, 5);
-
     const border = this.add.graphics();
-    border.lineStyle(1.5, 0xff9a56, 0.48);
+    border.lineStyle(1.5, 0xff9a56, 0.72);
     border.strokeRoundedRect(zx, zy, zw, zh, 20);
 
     const chip = this.add.graphics();
-    chip.fillStyle(0xff9a56, 0.16);
-    chip.lineStyle(1, 0xff9a56, 0.52);
+    chip.fillStyle(0xff9a56, 0.32);
+    chip.lineStyle(1, 0xff9a56, 0.9);
     chip.fillRoundedRect(zx + 16, zy + 14, 128, 26, 13);
     chip.strokeRoundedRect(zx + 16, zy + 14, 128, 26, 13);
     chip.setDepth(3);
@@ -397,7 +375,7 @@ export class OfficeScene extends Phaser.Scene {
     this.add.text(zx + 26, zy + 18, "Lounge Zone", {
       fontSize: "13px",
       fontStyle: "bold",
-      color: "#ffbf96",
+      color: "#ffd4b0",
     }).setDepth(3);
   }
 
@@ -469,7 +447,12 @@ export class OfficeScene extends Phaser.Scene {
 
       if (prop.type === "desk") this.drawDeskAt(g, x, y);
       else if (prop.type === "meeting_chair") this.drawChairAt(g, x, y);
-      else this.drawSofaAt(g, x, y);
+      else if (prop.type === "sofa") this.drawSofaAt(g, x, y);
+      else if (prop.type === "lounge_table") this.drawLoungeTableAt(g, x, y);
+      else if (prop.type === "meeting_table") this.drawMeetingTableAt(g, x, y);
+      else if (prop.type === "plant") this.drawPlantAt(g, x, y);
+      else if (prop.type === "bookshelf") this.drawBookshelfAt(g, x, y);
+      else if (prop.type === "whiteboard") this.drawWhiteboardAt(g, x, y);
 
       // 편집 모드 중엔 마커로 대체되므로 숨김
       if (this.isEditMode) g.setAlpha(0);
@@ -538,6 +521,127 @@ export class OfficeScene extends Phaser.Scene {
     g.fillStyle(0xca9a70, 0.4);
     g.fillRoundedRect(x - 24, y - 2, 20, 6, 4);
     g.fillRoundedRect(x + 4, y - 2, 20, 6, 4);
+  }
+
+  private drawLoungeTableAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 그림자
+    g.fillStyle(0x000000, 0.2);
+    g.fillRoundedRect(x - 31, y + 7, 64, 12, 4);
+    // 측면 (두께감)
+    g.fillStyle(0x4a3020, 1);
+    g.fillRoundedRect(x - 30, y + 4, 60, 8, 2);
+    // 상판
+    g.fillStyle(0x6a4c2e, 1);
+    g.fillRoundedRect(x - 30, y - 8, 60, 14, 5);
+    // 상판 하이라이트
+    g.fillStyle(0xa07850, 0.42);
+    g.fillRoundedRect(x - 27, y - 6, 54, 5, 3);
+    // 다리
+    g.fillStyle(0x3a2010, 1);
+    g.fillRect(x - 22, y + 6, 5, 10);
+    g.fillRect(x + 17, y + 6, 5, 10);
+  }
+
+  private drawMeetingTableAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 그림자
+    g.fillStyle(0x000000, 0.25);
+    g.fillEllipse(x + 5, y + 13, 70, 28);
+    // 측면 (두께감)
+    g.fillStyle(0x3e2610, 1);
+    g.fillEllipse(x, y + 6, 68, 26);
+    // 상판
+    g.fillStyle(0x6a4c2e, 1);
+    g.fillEllipse(x, y, 68, 24);
+    // 상판 하이라이트
+    g.fillStyle(0xa07850, 0.38);
+    g.fillEllipse(x - 2, y - 4, 50, 10);
+  }
+
+  private drawPlantAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 잎 (뒤)
+    g.fillStyle(0x388e3c, 0.85);
+    g.fillEllipse(x - 10, y - 13, 20, 13);
+    g.fillEllipse(x + 10, y - 13, 20, 13);
+    // 잎 (앞 중앙)
+    g.fillStyle(0x4caf50, 0.95);
+    g.fillEllipse(x, y - 18, 28, 18);
+    // 잎 하이라이트
+    g.fillStyle(0x7dcc60, 0.38);
+    g.fillEllipse(x - 2, y - 21, 14, 7);
+    // 줄기
+    g.fillStyle(0x4a7a20, 1);
+    g.fillRect(x - 1, y - 6, 2, 10);
+    // 화분 테두리
+    g.fillStyle(0x7a3510, 1);
+    g.fillRoundedRect(x - 14, y + 2, 28, 4, 2);
+    // 화분 몸통
+    g.fillStyle(0xb05020, 1);
+    g.fillRoundedRect(x - 12, y + 5, 24, 14, 3);
+    // 화분 하이라이트
+    g.fillStyle(0xff8050, 0.28);
+    g.fillRoundedRect(x - 10, y + 7, 12, 4, 2);
+  }
+
+  private drawBookshelfAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 프레임
+    g.fillStyle(0x7a5a38, 1);
+    g.fillRoundedRect(x - 30, y - 28, 60, 52, 4);
+    // 내부 배경
+    g.fillStyle(0x2e2010, 1);
+    g.fillRect(x - 26, y - 24, 52, 44);
+    // 선반 칸막이
+    g.fillStyle(0x7a5a38, 1);
+    g.fillRect(x - 26, y - 5, 52, 3);
+    // 윗 칸 책들
+    const topBooks: { color: number; w: number }[] = [
+      { color: 0x4a9eff, w: 8 }, { color: 0xff6b6b, w: 7 },
+      { color: 0x5ec99a, w: 9 }, { color: 0xffd700, w: 6 },
+      { color: 0xff9a56, w: 8 }, { color: 0xa855f7, w: 7 },
+    ];
+    let bx = x - 25;
+    topBooks.forEach(({ color, w }) => {
+      g.fillStyle(color, 0.92);
+      g.fillRect(bx, y - 23, w, 16);
+      bx += w + 1;
+    });
+    // 아랫 칸 책들
+    const botBooks: { color: number; w: number }[] = [
+      { color: 0x06b6d4, w: 9 }, { color: 0xec4899, w: 7 },
+      { color: 0xf97316, w: 8 }, { color: 0x84cc16, w: 9 },
+      { color: 0xe11d48, w: 7 },
+    ];
+    bx = x - 25;
+    botBooks.forEach(({ color, w }) => {
+      g.fillStyle(color, 0.92);
+      g.fillRect(bx, y - 3, w, 17);
+      bx += w + 1;
+    });
+  }
+
+  private drawWhiteboardAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 지지대
+    g.fillStyle(0x3a4a5a, 1);
+    g.fillRect(x - 4, y + 18, 4, 8);
+    g.fillRect(x, y + 18, 4, 8);
+    // 프레임
+    g.fillStyle(0x4a5a6a, 1);
+    g.fillRoundedRect(x - 32, y - 26, 64, 46, 4);
+    // 보드 표면
+    g.fillStyle(0xeef2ff, 1);
+    g.fillRoundedRect(x - 29, y - 23, 58, 38, 2);
+    // 텍스트 라인들
+    g.lineStyle(1.5, 0x4a9eff, 0.7);
+    g.lineBetween(x - 22, y - 14, x + 8, y - 14);
+    g.lineBetween(x - 22, y - 7, x + 18, y - 7);
+    g.lineBetween(x - 22, y, x + 2, y);
+    // 차트 요소
+    g.lineStyle(1.5, 0x5ec99a, 0.8);
+    g.lineBetween(x + 8, y + 8, x + 13, y - 1);
+    g.lineBetween(x + 13, y - 1, x + 18, y + 4);
+    g.lineBetween(x + 18, y + 4, x + 23, y - 5);
+    // 트레이
+    g.fillStyle(0x2d3748, 1);
+    g.fillRect(x - 29, y + 15, 58, 5);
   }
 
   // ── PROP MARKERS ────────────────────────────────────────────────────────────
