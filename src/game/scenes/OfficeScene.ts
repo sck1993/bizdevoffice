@@ -32,6 +32,25 @@ const PROP_LABELS: Record<PropType, string> = {
   whiteboard: "W",
 };
 
+// 소품 타일 크기 (tileCol/tileRow 는 좌상단 기준)
+const PROP_SIZE: Record<PropType, { w: number; h: number }> = {
+  desk:          { w: 1, h: 1 },
+  meeting_chair: { w: 1, h: 1 },
+  sofa:          { w: 1, h: 1 },
+  lounge_table:  { w: 1, h: 1 },
+  meeting_table: { w: 2, h: 2 },
+  plant:         { w: 1, h: 1 },
+  bookshelf:     { w: 2, h: 1 },
+  whiteboard:    { w: 1, h: 1 },
+};
+
+function propCenter(col: number, row: number, pw: number, ph: number): { x: number; y: number } {
+  return {
+    x: TILE_GRID.originX + col * TILE_GRID.tileW + (pw * TILE_GRID.tileW) / 2,
+    y: TILE_GRID.originY + row * TILE_GRID.tileH + (ph * TILE_GRID.tileH) / 2,
+  };
+}
+
 export class OfficeScene extends Phaser.Scene {
   private agents = new Map<string, AgentSprite>();
   private meetingOccupied: (string | null)[] = [];
@@ -442,7 +461,8 @@ export class OfficeScene extends Phaser.Scene {
     this.propVisuals.clear();
 
     config.props.forEach((prop) => {
-      const { x, y } = tileToPixel(prop.tileCol, prop.tileRow);
+      const { w, h } = PROP_SIZE[prop.type];
+      const { x, y } = propCenter(prop.tileCol, prop.tileRow, w, h);
       const g = this.add.graphics();
       g.setDepth(4);
 
@@ -544,18 +564,19 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private drawMeetingTableAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+    // 2x2 타일 = 160×160 px 영역, 중심 (x, y)
     // 그림자
     g.fillStyle(0x000000, 0.25);
-    g.fillEllipse(x + 5, y + 13, 70, 28);
+    g.fillEllipse(x + 7, y + 14, 138, 68);
     // 측면 (두께감)
     g.fillStyle(0x3e2610, 1);
-    g.fillEllipse(x, y + 6, 68, 26);
+    g.fillEllipse(x, y + 7, 136, 66);
     // 상판
     g.fillStyle(0x6a4c2e, 1);
-    g.fillEllipse(x, y, 68, 24);
+    g.fillEllipse(x, y, 136, 64);
     // 상판 하이라이트
     g.fillStyle(0xa07850, 0.38);
-    g.fillEllipse(x - 2, y - 4, 50, 10);
+    g.fillEllipse(x - 4, y - 10, 100, 22);
   }
 
   private drawPlantAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
@@ -584,38 +605,42 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private drawBookshelfAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
-    // 프레임
+    // 2x1 타일 = 160×80 px 영역, 중심 (x, y)
     g.fillStyle(0x7a5a38, 1);
-    g.fillRoundedRect(x - 30, y - 28, 60, 52, 4);
+    g.fillRoundedRect(x - 76, y - 36, 152, 72, 4);
     // 내부 배경
     g.fillStyle(0x2e2010, 1);
-    g.fillRect(x - 26, y - 24, 52, 44);
+    g.fillRect(x - 72, y - 32, 144, 64);
     // 선반 칸막이
     g.fillStyle(0x7a5a38, 1);
-    g.fillRect(x - 26, y - 5, 52, 3);
+    g.fillRect(x - 72, y - 1, 144, 3);
     // 윗 칸 책들
     const topBooks: { color: number; w: number }[] = [
-      { color: 0x4a9eff, w: 8 }, { color: 0xff6b6b, w: 7 },
-      { color: 0x5ec99a, w: 9 }, { color: 0xffd700, w: 6 },
-      { color: 0xff9a56, w: 8 }, { color: 0xa855f7, w: 7 },
+      { color: 0x4a9eff, w: 11 }, { color: 0xff6b6b, w: 9  },
+      { color: 0x5ec99a, w: 12 }, { color: 0xffd700, w: 8  },
+      { color: 0xff9a56, w: 11 }, { color: 0xa855f7, w: 9  },
+      { color: 0x06b6d4, w: 10 }, { color: 0xec4899, w: 8  },
+      { color: 0xf97316, w: 11 }, { color: 0x84cc16, w: 9  },
     ];
-    let bx = x - 25;
+    let bx = x - 70;
     topBooks.forEach(({ color, w }) => {
       g.fillStyle(color, 0.92);
-      g.fillRect(bx, y - 23, w, 16);
-      bx += w + 1;
+      g.fillRect(bx, y - 29, w, 26);
+      bx += w + 2;
     });
     // 아랫 칸 책들
     const botBooks: { color: number; w: number }[] = [
-      { color: 0x06b6d4, w: 9 }, { color: 0xec4899, w: 7 },
-      { color: 0xf97316, w: 8 }, { color: 0x84cc16, w: 9 },
-      { color: 0xe11d48, w: 7 },
+      { color: 0xe11d48, w: 12 }, { color: 0x0ea5e9, w: 10 },
+      { color: 0x8b5cf6, w: 11 }, { color: 0x10b981, w: 9  },
+      { color: 0xf59e0b, w: 12 }, { color: 0x6366f1, w: 10 },
+      { color: 0xef4444, w: 9  }, { color: 0x22d3ee, w: 11 },
+      { color: 0xa3e635, w: 10 },
     ];
-    bx = x - 25;
+    bx = x - 70;
     botBooks.forEach(({ color, w }) => {
       g.fillStyle(color, 0.92);
-      g.fillRect(bx, y - 3, w, 17);
-      bx += w + 1;
+      g.fillRect(bx, y + 4, w, 26);
+      bx += w + 2;
     });
   }
 
@@ -659,15 +684,20 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private createPropMarker(prop: OfficeProp): Phaser.GameObjects.Container {
-    const { x, y } = tileToPixel(prop.tileCol, prop.tileRow);
+    const { w, h } = PROP_SIZE[prop.type];
+    const { x, y } = propCenter(prop.tileCol, prop.tileRow, w, h);
     const color = PROP_COLORS[prop.type];
     const label = PROP_LABELS[prop.type];
 
+    // 마커 크기: 타일 수 × 80px, 4px 패딩
+    const hw = (w * TILE_GRID.tileW) / 2 - 4;
+    const hh = (h * TILE_GRID.tileH) / 2 - 4;
+
     const bg = this.add.graphics();
     bg.fillStyle(color, 0.7);
-    bg.fillRoundedRect(-20, -20, 40, 40, 8);
+    bg.fillRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
     bg.lineStyle(2, 0xffffff, 0.6);
-    bg.strokeRoundedRect(-20, -20, 40, 40, 8);
+    bg.strokeRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
 
     const text = this.add.text(0, 0, label, {
       fontSize: "14px",
@@ -675,12 +705,12 @@ export class OfficeScene extends Phaser.Scene {
       color: "#ffffff",
     }).setOrigin(0.5);
 
-    // 삭제 버튼 (편집 모드에서만 표시)
+    // 삭제 버튼 (우상단)
     const delBg = this.add.graphics();
     delBg.fillStyle(0xff4444, 0.85);
-    delBg.fillCircle(20, -20, 9);
+    delBg.fillCircle(hw, -hh, 9);
 
-    const delText = this.add.text(20, -20, "×", {
+    const delText = this.add.text(hw, -hh, "×", {
       fontSize: "12px",
       fontStyle: "bold",
       color: "#ffffff",
@@ -688,14 +718,15 @@ export class OfficeScene extends Phaser.Scene {
 
     const container = this.add.container(x, y, [bg, text, delBg, delText]);
     container.setDepth(10);
-    container.setAlpha(0); // 편집 모드에서만 표시
+    container.setAlpha(0);
     container.setData("propId", prop.id);
     container.setData("propType", prop.type);
     container.setData("tileCol", prop.tileCol);
     container.setData("tileRow", prop.tileRow);
+    container.setData("tileW", w);
+    container.setData("tileH", h);
 
-    // 삭제 버튼 인터랙티브 영역
-    const delZone = this.add.zone(20, -20, 18, 18).setInteractive();
+    const delZone = this.add.zone(hw, -hh, 18, 18).setInteractive();
     container.add(delZone);
     delZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       pointer.event.stopPropagation();
@@ -741,7 +772,9 @@ export class OfficeScene extends Phaser.Scene {
 
     this.propMarkers.forEach((container) => {
       container.setAlpha(1);
-      container.setSize(40, 40);
+      const pw = (container.getData("tileW") as number) ?? 1;
+      const ph = (container.getData("tileH") as number) ?? 1;
+      container.setSize(pw * TILE_GRID.tileW, ph * TILE_GRID.tileH);
       container.setInteractive();
       this.input.setDraggable(container);
     });
@@ -752,11 +785,24 @@ export class OfficeScene extends Phaser.Scene {
       dragX: number,
       dragY: number
     ) => {
-      const { col, row } = pixelToTile(dragX, dragY);
-      const snapped = tileToPixel(col, row);
+      const pw = (obj.getData("tileW") as number) ?? 1;
+      const ph = (obj.getData("tileH") as number) ?? 1;
 
-      if (this.isTileOccupied(col, row, obj.getData("propId") as string)) return;
+      // 드래그 중심 → 좌상단 타일 계산
+      const topLeftX = dragX - (pw * TILE_GRID.tileW) / 2;
+      const topLeftY = dragY - (ph * TILE_GRID.tileH) / 2;
+      const col = Math.max(0, Math.min(
+        TILE_GRID.cols - pw,
+        Math.floor((topLeftX - TILE_GRID.originX + TILE_GRID.tileW / 2) / TILE_GRID.tileW),
+      ));
+      const row = Math.max(0, Math.min(
+        TILE_GRID.rows - ph,
+        Math.floor((topLeftY - TILE_GRID.originY + TILE_GRID.tileH / 2) / TILE_GRID.tileH),
+      ));
 
+      if (this.isTileOccupied(col, row, obj.getData("propId") as string, pw, ph)) return;
+
+      const snapped = propCenter(col, row, pw, ph);
       obj.setPosition(snapped.x, snapped.y);
       obj.setData("tileCol", col);
       obj.setData("tileRow", row);
@@ -809,10 +855,22 @@ export class OfficeScene extends Phaser.Scene {
     this.preEditConfig = null;
   }
 
-  private isTileOccupied(col: number, row: number, excludeId: string): boolean {
+  private isTileOccupied(col: number, row: number, excludeId: string, pw = 1, ph = 1): boolean {
+    // 후보 소품이 점유할 타일 집합
+    const candidates = new Set<string>();
+    for (let r = row; r < row + ph; r++)
+      for (let c = col; c < col + pw; c++)
+        candidates.add(`${c},${r}`);
+
     for (const [id, container] of this.propMarkers) {
       if (id === excludeId) continue;
-      if (container.getData("tileCol") === col && container.getData("tileRow") === row) return true;
+      const eCol = container.getData("tileCol") as number;
+      const eRow = container.getData("tileRow") as number;
+      const ePw  = (container.getData("tileW") as number) ?? 1;
+      const ePh  = (container.getData("tileH") as number) ?? 1;
+      for (let r = eRow; r < eRow + ePh; r++)
+        for (let c = eCol; c < eCol + ePw; c++)
+          if (candidates.has(`${c},${r}`)) return true;
     }
     return false;
   }
@@ -858,11 +916,13 @@ export class OfficeScene extends Phaser.Scene {
   private addProp(type: PropType) {
     if (!this.isEditMode) return;
 
-    // 비어있는 타일 탐색
+    const size = PROP_SIZE[type];
+
+    // 비어있는 타일 탐색 (멀티타일 크기 고려)
     let foundCol = -1, foundRow = -1;
-    outer: for (let row = 0; row < TILE_GRID.rows; row++) {
-      for (let col = 0; col < TILE_GRID.cols; col++) {
-        if (!this.isTileOccupied(col, row, "")) {
+    outer: for (let row = 0; row <= TILE_GRID.rows - size.h; row++) {
+      for (let col = 0; col <= TILE_GRID.cols - size.w; col++) {
+        if (!this.isTileOccupied(col, row, "", size.w, size.h)) {
           foundCol = col;
           foundRow = row;
           break outer;
@@ -878,7 +938,7 @@ export class OfficeScene extends Phaser.Scene {
 
     const marker = this.createPropMarker(newProp);
     marker.setAlpha(1);
-    marker.setSize(40, 40);
+    marker.setSize(size.w * TILE_GRID.tileW, size.h * TILE_GRID.tileH);
     marker.setInteractive();
     this.input.setDraggable(marker);
     this.propMarkers.set(newId, marker);
