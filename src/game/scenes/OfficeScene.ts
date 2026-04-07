@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { EventBus } from "../EventBus";
-import { GAME_HEIGHT, GAME_WIDTH, TILE_GRID, tileToPixel, pixelToTile } from "../config";
+import { GAME_HEIGHT, GAME_WIDTH, TILE_GRID, tileToPixel } from "../config";
 import { AgentSprite } from "../sprites/AgentSprite";
 import type { AgentRemoved, AgentState, AgentStateChanged, AgentsSnapshot } from "../../types/agent";
 import type { OfficeConfig, OfficeProp, PropType } from "../../types/office";
@@ -9,28 +9,6 @@ function stableLoungeIndex(agentId: string, seatCount: number): number {
   return agentId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % Math.max(1, seatCount);
 }
 
-// prop 타입별 색상
-const PROP_COLORS: Record<PropType, number> = {
-  desk: 0x4a9eff,
-  meeting_chair: 0x5ec99a,
-  sofa: 0xff9a56,
-  lounge_table: 0xc89060,
-  meeting_table: 0xa06830,
-  plant: 0x4caf50,
-  bookshelf: 0xb08050,
-  whiteboard: 0x90a8d8,
-};
-
-const PROP_LABELS: Record<PropType, string> = {
-  desk: "D",
-  meeting_chair: "M",
-  sofa: "S",
-  lounge_table: "LT",
-  meeting_table: "MT",
-  plant: "P",
-  bookshelf: "B",
-  whiteboard: "W",
-};
 
 // 소품 타일 크기 (tileCol/tileRow 는 좌상단 기준)
 const PROP_SIZE: Record<PropType, { w: number; h: number }> = {
@@ -57,11 +35,8 @@ export class OfficeScene extends Phaser.Scene {
 
   // ── 오피스 config ──
   private currentConfig: OfficeConfig = { props: [] };
-  private propMarkers = new Map<string, Phaser.GameObjects.Container>();
+  private propObjects = new Map<string, Phaser.GameObjects.Container>();
   private gridGraphics: Phaser.GameObjects.Graphics | null = null;
-
-  // ── 소품 비주얼 (일반 모드) ──
-  private propVisuals = new Map<string, Phaser.GameObjects.Graphics>();
 
   // ── 편집 모드 ──
   private isEditMode = false;
@@ -158,8 +133,7 @@ export class OfficeScene extends Phaser.Scene {
       const config = data as OfficeConfig;
       this.currentConfig = config;
       this.meetingOccupied = config.props.filter((p) => p.type === "meeting_chair").map(() => null);
-      this.renderPropMarkers(config);
-      this.renderPropVisuals(config);
+      this.renderProps(config);
       this.updateAllSpritePositions();
     };
 
@@ -454,32 +428,69 @@ export class OfficeScene extends Phaser.Scene {
     };
   }
 
-  // ── PROP VISUALS (일반 모드 가구 그래픽) ─────────────────────────────────────
+  // ── PROP OBJECTS ─────────────────────────────────────────────────────────────
 
-  private renderPropVisuals(config: OfficeConfig) {
-    this.propVisuals.forEach((g) => g.destroy());
-    this.propVisuals.clear();
-
+  private renderProps(config: OfficeConfig) {
+    this.propObjects.forEach((c) => c.destroy());
+    this.propObjects.clear();
     config.props.forEach((prop) => {
-      const { w, h } = PROP_SIZE[prop.type];
-      const { x, y } = propCenter(prop.tileCol, prop.tileRow, w, h);
-      const g = this.add.graphics();
-      g.setDepth(4);
-
-      if (prop.type === "desk") this.drawDeskAt(g, x, y);
-      else if (prop.type === "meeting_chair") this.drawChairAt(g, x, y);
-      else if (prop.type === "sofa") this.drawSofaAt(g, x, y);
-      else if (prop.type === "lounge_table") this.drawLoungeTableAt(g, x, y);
-      else if (prop.type === "meeting_table") this.drawMeetingTableAt(g, x, y);
-      else if (prop.type === "plant") this.drawPlantAt(g, x, y);
-      else if (prop.type === "bookshelf") this.drawBookshelfAt(g, x, y);
-      else if (prop.type === "whiteboard") this.drawWhiteboardAt(g, x, y);
-
-      // 편집 모드 중엔 마커로 대체되므로 숨김
-      if (this.isEditMode) g.setAlpha(0);
-
-      this.propVisuals.set(prop.id, g);
+      this.propObjects.set(prop.id, this.createPropObject(prop));
     });
+  }
+
+  private drawPropGraphic(g: Phaser.GameObjects.Graphics, type: PropType, x: number, y: number) {
+    if (type === "desk") this.drawDeskAt(g, x, y);
+    else if (type === "meeting_chair") this.drawChairAt(g, x, y);
+    else if (type === "sofa") this.drawSofaAt(g, x, y);
+    else if (type === "lounge_table") this.drawLoungeTableAt(g, x, y);
+    else if (type === "meeting_table") this.drawMeetingTableAt(g, x, y);
+    else if (type === "plant") this.drawPlantAt(g, x, y);
+    else if (type === "bookshelf") this.drawBookshelfAt(g, x, y);
+    else if (type === "whiteboard") this.drawWhiteboardAt(g, x, y);
+  }
+
+  private createPropObject(prop: OfficeProp): Phaser.GameObjects.Container {
+    const { w, h } = PROP_SIZE[prop.type];
+    const { x, y } = propCenter(prop.tileCol, prop.tileRow, w, h);
+
+    // 그래픽은 컨테이너 기준 (0,0) 으로 그린다
+    const g = this.add.graphics();
+    this.drawPropGraphic(g, prop.type, 0, 0);
+
+    // 삭제 버튼 (우상단, 편집 모드에서만 표시)
+    const hw = (w * TILE_GRID.tileW) / 2 - 4;
+    const hh = (h * TILE_GRID.tileH) / 2 - 4;
+
+    const delBg = this.add.graphics();
+    delBg.fillStyle(0xff4444, 0.9);
+    delBg.fillCircle(hw, -hh, 10);
+    delBg.setVisible(false);
+
+    const delLabel = this.add.text(hw, -hh, "×", {
+      fontSize: "13px",
+      fontStyle: "bold",
+      color: "#ffffff",
+    }).setOrigin(0.5).setVisible(false);
+
+    const delZone = this.add.zone(hw, -hh, 20, 20).setInteractive();
+
+    const container = this.add.container(x, y, [g, delBg, delLabel, delZone]);
+    container.setDepth(4);
+    container.setData("propId", prop.id);
+    container.setData("propType", prop.type);
+    container.setData("tileCol", prop.tileCol);
+    container.setData("tileRow", prop.tileRow);
+    container.setData("tileW", w);
+    container.setData("tileH", h);
+    container.setData("delBg", delBg);
+    container.setData("delLabel", delLabel);
+
+    delZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      pointer.event.stopPropagation();
+      if (this.isEditMode) this.deleteProp(prop.id);
+    });
+
+    return container;
   }
 
   private drawDeskAt(g: Phaser.GameObjects.Graphics, x: number, y: number) {
@@ -670,72 +681,6 @@ export class OfficeScene extends Phaser.Scene {
     g.fillRect(x - 29, y + 15, 58, 5);
   }
 
-  // ── PROP MARKERS ────────────────────────────────────────────────────────────
-
-  private renderPropMarkers(config: OfficeConfig) {
-    // 기존 마커 제거
-    this.propMarkers.forEach((c) => c.destroy());
-    this.propMarkers.clear();
-
-    config.props.forEach((prop) => {
-      const marker = this.createPropMarker(prop);
-      this.propMarkers.set(prop.id, marker);
-    });
-  }
-
-  private createPropMarker(prop: OfficeProp): Phaser.GameObjects.Container {
-    const { w, h } = PROP_SIZE[prop.type];
-    const { x, y } = propCenter(prop.tileCol, prop.tileRow, w, h);
-    const color = PROP_COLORS[prop.type];
-    const label = PROP_LABELS[prop.type];
-
-    // 마커 크기: 타일 수 × 80px, 4px 패딩
-    const hw = (w * TILE_GRID.tileW) / 2 - 4;
-    const hh = (h * TILE_GRID.tileH) / 2 - 4;
-
-    const bg = this.add.graphics();
-    bg.fillStyle(color, 0.7);
-    bg.fillRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
-    bg.lineStyle(2, 0xffffff, 0.6);
-    bg.strokeRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
-
-    const text = this.add.text(0, 0, label, {
-      fontSize: "14px",
-      fontStyle: "bold",
-      color: "#ffffff",
-    }).setOrigin(0.5);
-
-    // 삭제 버튼 (우상단)
-    const delBg = this.add.graphics();
-    delBg.fillStyle(0xff4444, 0.85);
-    delBg.fillCircle(hw, -hh, 9);
-
-    const delText = this.add.text(hw, -hh, "×", {
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: "#ffffff",
-    }).setOrigin(0.5);
-
-    const container = this.add.container(x, y, [bg, text, delBg, delText]);
-    container.setDepth(10);
-    container.setAlpha(0);
-    container.setData("propId", prop.id);
-    container.setData("propType", prop.type);
-    container.setData("tileCol", prop.tileCol);
-    container.setData("tileRow", prop.tileRow);
-    container.setData("tileW", w);
-    container.setData("tileH", h);
-
-    const delZone = this.add.zone(hw, -hh, 18, 18).setInteractive();
-    container.add(delZone);
-    delZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      pointer.event.stopPropagation();
-      if (this.isEditMode) this.deleteProp(prop.id);
-    });
-
-    return container;
-  }
-
   // ── EDIT MODE ────────────────────────────────────────────────────────────────
 
   private showGrid() {
@@ -765,18 +710,18 @@ export class OfficeScene extends Phaser.Scene {
     this.isEditMode = true;
     this.preEditConfig = structuredClone(this.currentConfig);
 
-    // 가구 비주얼 숨기고 마커로 대체
-    this.propVisuals.forEach((g) => g.setAlpha(0));
-
     this.showGrid();
 
-    this.propMarkers.forEach((container) => {
-      container.setAlpha(1);
+    this.propObjects.forEach((container) => {
+      container.setAlpha(0.75);
       const pw = (container.getData("tileW") as number) ?? 1;
       const ph = (container.getData("tileH") as number) ?? 1;
       container.setSize(pw * TILE_GRID.tileW, ph * TILE_GRID.tileH);
       container.setInteractive();
       this.input.setDraggable(container);
+      // 삭제 버튼 표시
+      (container.getData("delBg") as Phaser.GameObjects.Graphics).setVisible(true);
+      (container.getData("delLabel") as Phaser.GameObjects.Text).setVisible(true);
     });
 
     this.editDragHandler = (
@@ -820,15 +765,17 @@ export class OfficeScene extends Phaser.Scene {
       this.input.off("drag", this.editDragHandler);
       this.editDragHandler = null;
     }
-    this.propMarkers.forEach((container) => {
-      container.setAlpha(0);
+    this.propObjects.forEach((container) => {
+      container.setAlpha(1);
       this.input.setDraggable(container, false);
+      // 삭제 버튼 숨김
+      (container.getData("delBg") as Phaser.GameObjects.Graphics).setVisible(false);
+      (container.getData("delLabel") as Phaser.GameObjects.Text).setVisible(false);
     });
 
     if (save) {
-      // 현재 마커 위치로 새 config 구성
       const newProps: OfficeProp[] = [];
-      this.propMarkers.forEach((container, propId) => {
+      this.propObjects.forEach((container, propId) => {
         newProps.push({
           id: propId,
           type: container.getData("propType") as PropType,
@@ -840,15 +787,14 @@ export class OfficeScene extends Phaser.Scene {
       this.currentConfig = newConfig;
       this.meetingOccupied = newProps.filter((p) => p.type === "meeting_chair").map(() => null);
       this.updateAllSpritePositions();
-      // 가구 비주얼을 마커의 최종 위치로 재생성
-      this.renderPropVisuals(newConfig);
+      // 드래그된 최종 위치로 그래픽 재생성
+      this.renderProps(newConfig);
       EventBus.emit("office:config-updated", newConfig);
     } else {
       // 취소: 저장된 위치로 복원
       if (this.preEditConfig) {
         this.currentConfig = this.preEditConfig;
-        this.renderPropMarkers(this.preEditConfig);
-        this.renderPropVisuals(this.preEditConfig);
+        this.renderProps(this.preEditConfig);
       }
     }
 
@@ -862,7 +808,7 @@ export class OfficeScene extends Phaser.Scene {
       for (let c = col; c < col + pw; c++)
         candidates.add(`${c},${r}`);
 
-    for (const [id, container] of this.propMarkers) {
+    for (const [id, container] of this.propObjects) {
       if (id === excludeId) continue;
       const eCol = container.getData("tileCol") as number;
       const eRow = container.getData("tileRow") as number;
@@ -876,7 +822,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private deleteProp(propId: string) {
-    const container = this.propMarkers.get(propId);
+    const container = this.propObjects.get(propId);
     if (!container) return;
 
     const propType = container.getData("propType") as PropType;
@@ -889,25 +835,14 @@ export class OfficeScene extends Phaser.Scene {
         (sprite) => sprite.currentStatus === "working" && sprite.deskIndex === deskIdx
       );
       if (isOccupied) {
-        // 흔들기 피드백
-        this.tweens.add({
-          targets: container,
-          x: container.x + 6,
-          duration: 50,
-          yoyo: true,
-          repeat: 3,
-        });
+        this.tweens.add({ targets: container, x: container.x + 6, duration: 50, yoyo: true, repeat: 3 });
         return;
       }
     }
 
     container.destroy();
-    this.propMarkers.delete(propId);
+    this.propObjects.delete(propId);
 
-    this.propVisuals.get(propId)?.destroy();
-    this.propVisuals.delete(propId);
-
-    // currentConfig에서도 제거
     this.currentConfig = {
       props: this.currentConfig.props.filter((p) => p.id !== propId),
     };
@@ -936,12 +871,14 @@ export class OfficeScene extends Phaser.Scene {
 
     this.currentConfig = { props: [...this.currentConfig.props, newProp] };
 
-    const marker = this.createPropMarker(newProp);
-    marker.setAlpha(1);
-    marker.setSize(size.w * TILE_GRID.tileW, size.h * TILE_GRID.tileH);
-    marker.setInteractive();
-    this.input.setDraggable(marker);
-    this.propMarkers.set(newId, marker);
+    const obj = this.createPropObject(newProp);
+    obj.setAlpha(0.75);
+    obj.setSize(size.w * TILE_GRID.tileW, size.h * TILE_GRID.tileH);
+    obj.setInteractive();
+    this.input.setDraggable(obj);
+    (obj.getData("delBg") as Phaser.GameObjects.Graphics).setVisible(true);
+    (obj.getData("delLabel") as Phaser.GameObjects.Text).setVisible(true);
+    this.propObjects.set(newId, obj);
   }
 
   // ── SPRITE 위치 동기화 ────────────────────────────────────────────────────
