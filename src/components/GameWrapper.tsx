@@ -75,6 +75,13 @@ export function GameWrapper() {
         console.log("[socket] office:config", data);
         EventBus.emit("office:config", data);
       });
+
+      for (const ev of ["meeting:turn-start", "meeting:speech-chunk", "meeting:turn-end", "meeting:ended", "meeting:error"] as const) {
+        socket.on(ev, (data) => {
+          console.log(`[socket] ${ev}`, data);
+          EventBus.emit(ev, data);
+        });
+      }
     };
 
     void init();

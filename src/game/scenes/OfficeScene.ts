@@ -147,6 +147,32 @@ export class OfficeScene extends Phaser.Scene {
     const handleEditCancel = () => this.exitEditMode(false);
     const handleAddProp = (data: unknown) => this.addProp((data as { type: PropType }).type);
 
+    const handleMeetingTurnStart = (data: unknown) => {
+      const { agentId } = data as { agentId: string };
+      this.agents.get(agentId)?.showSpeechBubble();
+    };
+
+    const handleMeetingSpeechChunk = (data: unknown) => {
+      const { agentId, chunk } = data as { agentId: string; chunk: string };
+      this.agents.get(agentId)?.appendSpeechChunk(chunk);
+    };
+
+    const handleMeetingTurnEnd = (data: unknown) => {
+      const { agentId } = data as { agentId: string };
+      this.time.delayedCall(1500, () => {
+        this.agents.get(agentId)?.hideSpeechBubble();
+      });
+    };
+
+    const handleMeetingEnded = () => {
+      this.agents.forEach((sprite) => sprite.hideSpeechBubble());
+    };
+
+    // 오류 시에도 말풍선 즉시 정리 (finally에서 meeting:ended가 뒤따라 오지만, 즉각 처리)
+    const handleMeetingError = () => {
+      this.agents.forEach((sprite) => sprite.hideSpeechBubble());
+    };
+
     EventBus.on("agents:snapshot", handleSnapshot);
     EventBus.on("agent:state-changed", handleStateChanged);
     EventBus.on("agent:removed", handleAgentRemoved);
@@ -157,6 +183,11 @@ export class OfficeScene extends Phaser.Scene {
     EventBus.on("office:edit-save", handleEditSave);
     EventBus.on("office:edit-cancel", handleEditCancel);
     EventBus.on("office:add-prop", handleAddProp);
+    EventBus.on("meeting:turn-start", handleMeetingTurnStart);
+    EventBus.on("meeting:speech-chunk", handleMeetingSpeechChunk);
+    EventBus.on("meeting:turn-end", handleMeetingTurnEnd);
+    EventBus.on("meeting:ended", handleMeetingEnded);
+    EventBus.on("meeting:error", handleMeetingError);
 
     this.events.once("shutdown", () => {
       EventBus.off("agents:snapshot", handleSnapshot);
@@ -169,6 +200,11 @@ export class OfficeScene extends Phaser.Scene {
       EventBus.off("office:edit-save", handleEditSave);
       EventBus.off("office:edit-cancel", handleEditCancel);
       EventBus.off("office:add-prop", handleAddProp);
+      EventBus.off("meeting:turn-start", handleMeetingTurnStart);
+      EventBus.off("meeting:speech-chunk", handleMeetingSpeechChunk);
+      EventBus.off("meeting:turn-end", handleMeetingTurnEnd);
+      EventBus.off("meeting:ended", handleMeetingEnded);
+      EventBus.off("meeting:error", handleMeetingError);
     });
   }
 

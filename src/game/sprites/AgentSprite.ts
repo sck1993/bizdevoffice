@@ -31,6 +31,10 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private taskTitle?: string;
   private deskPos?: { x: number; y: number };
   private wanderTimer: Phaser.Time.TimerEvent | null = null;
+  private speechBubble: Phaser.GameObjects.Container | null = null;
+  private speechText: Phaser.GameObjects.Text | null = null;
+  private speechBuffer = "";
+  private speechThrottleHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: AgentSpriteConfig) {
     const loungePos = config.loungeSeats[config.loungeIndex] ?? config.loungeSeats[0] ?? { x: 130, y: 520 };
@@ -193,10 +197,12 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
           onUpdate: () => {
             this.label.setPosition(this.x, this.y - 50);
             this.tooltip.setPosition(this.x, this.y - 70);
+            this.updateBubblePosition();
           },
           onComplete: () => {
             this.label.setPosition(this.x, this.y - 50);
             this.tooltip.setPosition(this.x, this.y - 70);
+            this.updateBubblePosition();
             if (this.currentStatus === "idle") this.scheduleWander();
           },
         });
@@ -218,10 +224,12 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       onUpdate: () => {
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
+        this.updateBubblePosition();
       },
       onComplete: () => {
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
+        this.updateBubblePosition();
         this.playAnimation();
         this.scheduleWander();
       },
@@ -235,13 +243,73 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     }
   }
 
+  // ── 말풍선 ──────────────────────────────────────────────────────────────────
+
+  showSpeechBubble() {
+    this.hideSpeechBubble();
+    this.speechBuffer = "";
+
+    const BUBBLE_W = 220;
+    const BUBBLE_H = 60;
+    const OFFSET_Y = -120;
+
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0xffffff, 0.95);
+    bg.fillRoundedRect(-BUBBLE_W / 2, -BUBBLE_H / 2, BUBBLE_W, BUBBLE_H, 10);
+    bg.fillStyle(0xdddddd, 0.95);
+    bg.fillTriangle(-8, BUBBLE_H / 2, 8, BUBBLE_H / 2, 0, BUBBLE_H / 2 + 10);
+
+    const text = this.scene.add.text(0, 0, "...", {
+      fontSize: "12px",
+      color: "#111111",
+      wordWrap: { width: BUBBLE_W - 16 },
+      align: "left",
+    }).setOrigin(0.5);
+
+    this.speechText = text;
+    this.speechBubble = this.scene.add.container(this.x, this.y + OFFSET_Y, [bg, text]);
+    this.speechBubble.setDepth(15);
+  }
+
+  appendSpeechChunk(chunk: string) {
+    this.speechBuffer += chunk;
+
+    if (this.speechThrottleHandle !== null) return;
+    this.speechThrottleHandle = setTimeout(() => {
+      this.speechThrottleHandle = null;
+      if (this.speechText && this.speechBubble) {
+        const preview = this.speechBuffer.slice(-120); // 최근 120자만 표시
+        this.speechText.setText(preview);
+      }
+    }, 100);
+  }
+
+  hideSpeechBubble() {
+    if (this.speechThrottleHandle !== null) {
+      clearTimeout(this.speechThrottleHandle);
+      this.speechThrottleHandle = null;
+    }
+    this.speechBubble?.destroy();
+    this.speechBubble = null;
+    this.speechText = null;
+    this.speechBuffer = "";
+  }
+
+  private updateBubblePosition() {
+    if (this.speechBubble) {
+      this.speechBubble.setPosition(this.x, this.y - 120);
+    }
+  }
+
   dim(active: boolean) {
     this.setAlpha(active ? 0.4 : 1.0);
     this.label.setAlpha(active ? 0.4 : 1.0);
+    this.speechBubble?.setAlpha(active ? 0.4 : 1.0);
   }
 
   override destroy(fromScene?: boolean) {
     this.stopWander();
+    this.hideSpeechBubble();
     this.label.destroy();
     this.tooltip.destroy();
     super.destroy(fromScene);

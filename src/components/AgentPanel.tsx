@@ -840,6 +840,21 @@ export function AgentPanel() {
   const [chatAgentId, setChatAgentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ── 회의 상태 ──────────────────────────────────────────────────────────────
+  type MeetingPhase = "idle" | "running" | "ended";
+  const [meetingPhase, setMeetingPhase] = useState<MeetingPhase>("idle");
+  const [meetingExpanded, setMeetingExpanded] = useState(false);
+  const [meetingTopic, setMeetingTopic] = useState("");
+  const [meetingAgentIds, setMeetingAgentIds] = useState<string[]>([]);
+  const [meetingTranscript, setMeetingTranscript] = useState<{ agentId: string; name: string; content: string }[]>([]);
+  const [currentSpeaker, setCurrentSpeaker] = useState<{ agentId: string; name: string } | null>(null);
+  const [streamingText, setStreamingText] = useState("");
+  const [meetingError, setMeetingError] = useState<string | null>(null);
+  const meetingIdRef = useRef<string | null>(null);
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  // currentSpeaker를 ref로 유지해 이벤트 핸들러에서 최신값 접근
+  const currentSpeakerRef = useRef<{ agentId: string; name: string } | null>(null);
+
   async function refreshConfigs() {
     try {
       const response = await fetch("/api/agents", { cache: "no-store" });
@@ -899,6 +914,75 @@ export function AgentPanel() {
     };
   }, []);
 
+  // 회의 EventBus 구독
+  useEffect(() => {
+    const onTurnStart = (data: unknown) => {
+      const { agentId, name } = data as { agentId: string; name: string };
+      currentSpeakerRef.current = { agentId, name };
+      setCurrentSpeaker({ agentId, name });
+      setStreamingText("");
+    };
+    const onChunk = (data: unknown) => {
+      const { chunk } = data as { agentId: string; chunk: string };
+      setStreamingText((prev) => prev + chunk);
+    };
+    const onTurnEnd = (data: unknown) => {
+      const { agentId, name: payloadName, content } = data as { agentId: string; name: string; content: string };
+      // 페이로드의 name을 우선 사용, 없으면 ref 폴백
+      const name = payloadName ?? currentSpeakerRef.current?.name ?? agentId;
+      setMeetingTranscript((prev) => [...prev, { agentId, name, content }]);
+      setCurrentSpeaker(null);
+      currentSpeakerRef.current = null;
+      setStreamingText("");
+    };
+    const onEnded = () => {
+      setMeetingPhase("ended");
+      setCurrentSpeaker(null);
+      currentSpeakerRef.current = null;
+      setStreamingText("");
+      meetingIdRef.current = null;
+    };
+    const onError = (data: unknown) => {
+      const { error: msg } = data as { error: string };
+      setMeetingError(msg);
+    };
+
+    // 소켓 단절 시 회의가 "running"으로 고착되지 않도록 복구
+    const onConnectionLost = () => {
+      setMeetingPhase((prev) => {
+        if (prev === "running") {
+          setMeetingError("연결이 끊어져 회의가 종료되었습니다.");
+          setCurrentSpeaker(null);
+          currentSpeakerRef.current = null;
+          setStreamingText("");
+          meetingIdRef.current = null;
+          return "ended";
+        }
+        return prev;
+      });
+    };
+
+    EventBus.on("meeting:turn-start", onTurnStart);
+    EventBus.on("meeting:speech-chunk", onChunk);
+    EventBus.on("meeting:turn-end", onTurnEnd);
+    EventBus.on("meeting:ended", onEnded);
+    EventBus.on("meeting:error", onError);
+    EventBus.on("connection:lost", onConnectionLost);
+    return () => {
+      EventBus.off("meeting:turn-start", onTurnStart);
+      EventBus.off("meeting:speech-chunk", onChunk);
+      EventBus.off("meeting:turn-end", onTurnEnd);
+      EventBus.off("meeting:ended", onEnded);
+      EventBus.off("meeting:error", onError);
+      EventBus.off("connection:lost", onConnectionLost);
+    };
+  }, []);
+
+  // 트랜스크립트 자동 스크롤
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [meetingTranscript, streamingText]);
+
   const merged = configs.map((config) => {
     const state = states.find((item) => item.agentId === config.agentId);
     return {
@@ -941,6 +1025,55 @@ export function AgentPanel() {
     );
     setEditingAgent(null);
     setError(null);
+  }
+
+  // 회의 함수
+  async function startMeeting() {
+    if (!meetingTopic.trim() || meetingAgentIds.length < 2) return;
+    setMeetingError(null);
+    setMeetingTranscript([]);
+    setCurrentSpeaker(null);
+    currentSpeakerRef.current = null;
+    setStreamingText("");
+    try {
+      const res = await fetch("/api/meetings/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: meetingTopic.trim(), agentIds: meetingAgentIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "회의 시작 실패");
+      meetingIdRef.current = data.meetingId;
+      setMeetingPhase("running");
+    } catch (e) {
+      setMeetingError(e instanceof Error ? e.message : "회의 시작 실패");
+    }
+  }
+
+  async function stopMeeting() {
+    // 즉시 버튼 비활성화를 위해 낙관적 상태 전환
+    setMeetingPhase("ended");
+    try {
+      await fetch("/api/meetings/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meetingId: meetingIdRef.current }),
+      });
+    } catch {
+      // 무시 — 서버에서 자동 종료
+    }
+  }
+
+  function resetMeeting() {
+    setMeetingPhase("idle");
+    setMeetingTopic("");
+    setMeetingAgentIds([]);
+    setMeetingTranscript([]);
+    setCurrentSpeaker(null);
+    currentSpeakerRef.current = null;
+    setStreamingText("");
+    setMeetingError(null);
+    meetingIdRef.current = null;
   }
 
   // 채팅 뷰
@@ -1002,6 +1135,174 @@ export function AgentPanel() {
               {gatewayConnected ? "OPENCLAW ON" : "OPENCLAW OFF"}
             </div>
           </div>
+        </div>
+
+        {/* 회의 섹션 */}
+        <div
+          style={{
+            flexShrink: 0,
+            borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+          }}
+        >
+          {/* 회의 헤더 (토글) */}
+          <button
+            type="button"
+            onClick={() => setMeetingExpanded((v) => !v)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 18px",
+              background: "none",
+              border: "none",
+              color: meetingPhase === "running" ? "#ffcc7a" : "#a0b8d8",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}
+          >
+            <span>
+              {meetingPhase === "running" ? "⚡ 회의 진행 중" : meetingPhase === "ended" ? "회의 종료됨" : "회의"}
+            </span>
+            <span style={{ fontSize: 10, opacity: 0.6 }}>{meetingExpanded ? "▲" : "▼"}</span>
+          </button>
+
+          {meetingExpanded && (
+            <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {meetingError && (
+                <div style={{ fontSize: 11, color: "#ffd8d8", background: "rgba(255,87,87,0.12)", borderRadius: 8, padding: "6px 10px" }}>
+                  {meetingError}
+                </div>
+              )}
+
+              {/* idle: 설정 폼 */}
+              {meetingPhase === "idle" && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="회의 주제 입력..."
+                    value={meetingTopic}
+                    onChange={(e) => setMeetingTopic(e.target.value)}
+                    style={{
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#edf4ff",
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      outline: "none",
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: "rgba(228,236,255,0.45)", marginBottom: 2 }}>참가 에이전트 선택 (2명 이상)</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 120, overflowY: "auto" }}>
+                    {merged.map((a) => (
+                      <label key={a.agentId} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#c8d8f0" }}>
+                        <input
+                          type="checkbox"
+                          checked={meetingAgentIds.includes(a.agentId)}
+                          onChange={(e) => {
+                            if (e.target.checked) setMeetingAgentIds((prev) => [...prev, a.agentId]);
+                            else setMeetingAgentIds((prev) => prev.filter((id) => id !== a.agentId));
+                          }}
+                        />
+                        {a.name}
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void startMeeting()}
+                    disabled={!meetingTopic.trim() || meetingAgentIds.length < 2 || !gatewayConnected}
+                    style={{
+                      borderRadius: 8,
+                      border: "none",
+                      background: "linear-gradient(135deg, #ffcc7a 0%, #ff9c67 100%)",
+                      color: "#1a0e00",
+                      padding: "9px",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: meetingTopic.trim() && meetingAgentIds.length >= 2 && gatewayConnected ? "pointer" : "not-allowed",
+                      opacity: meetingTopic.trim() && meetingAgentIds.length >= 2 && gatewayConnected ? 1 : 0.5,
+                    }}
+                  >
+                    회의 시작
+                  </button>
+                </>
+              )}
+
+              {/* running / ended: 트랜스크립트 */}
+              {(meetingPhase === "running" || meetingPhase === "ended") && (
+                <>
+                  <div
+                    style={{
+                      maxHeight: 220,
+                      overflowY: "auto",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      background: "rgba(0,0,0,0.2)",
+                      borderRadius: 10,
+                      padding: "8px 10px",
+                    }}
+                  >
+                    {meetingTranscript.length === 0 && meetingPhase === "running" && (
+                      <div style={{ fontSize: 11, color: "rgba(228,236,255,0.35)" }}>대화 시작 중...</div>
+                    )}
+                    {meetingTranscript.map((t, i) => (
+                      <div key={i} style={{ fontSize: 11, lineHeight: 1.5 }}>
+                        <span style={{ color: "#ffcc7a", fontWeight: 700 }}>{t.name}: </span>
+                        <span style={{ color: "#dce8ff" }}>{t.content}</span>
+                      </div>
+                    ))}
+                    {currentSpeaker && (
+                      <div style={{ fontSize: 11, lineHeight: 1.5 }}>
+                        <span style={{ color: "#86f2b8", fontWeight: 700 }}>{currentSpeaker.name}: </span>
+                        <span style={{ color: "rgba(220,232,255,0.7)" }}>{streamingText || "..."}</span>
+                      </div>
+                    )}
+                    <div ref={transcriptEndRef} />
+                  </div>
+
+                  {meetingPhase === "running" && (
+                    <button
+                      type="button"
+                      onClick={() => void stopMeeting()}
+                      style={{
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,122,122,0.3)",
+                        background: "rgba(255,102,102,0.1)",
+                        color: "#ffb7b7",
+                        padding: "7px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      회의 종료
+                    </button>
+                  )}
+                  {meetingPhase === "ended" && (
+                    <button
+                      type="button"
+                      onClick={resetMeeting}
+                      style={{
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(255,255,255,0.06)",
+                        color: "#c0d4f0",
+                        padding: "7px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      닫기
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 에이전트 목록 (스크롤) */}
