@@ -1,5 +1,5 @@
 /** @typedef {"idle"|"working"|"meeting"} AgentStatus */
-/** @typedef {{ agentId: string, name: string, state: AgentStatus, taskTitle?: string, deskIndex?: number }} AgentState */
+/** @typedef {{ agentId: string, name: string, state: AgentStatus, taskTitle?: string, deskIndex?: number, spriteImage?: string | null, spriteFrames?: number }} AgentState */
 
 class AgentStateStore {
   constructor() {

@@ -55,6 +55,7 @@ export async function PATCH(
     identity?: string;
     soul?: string;
     profileImage?: string | null;
+    spriteFrames?: number;
   };
 
   try {
@@ -72,12 +73,23 @@ export async function PATCH(
       }
 
       const current = existing[targetIndex];
+      const profileImageChanged = body.profileImage !== undefined && body.profileImage !== current.profileImage;
+      const nextSpriteFrames =
+        body.spriteFrames === undefined
+          ? profileImageChanged
+            ? undefined
+            : current.spriteFrames
+          : typeof body.spriteFrames === "number" && body.spriteFrames > 1
+            ? body.spriteFrames
+            : undefined;
+
       const nextAgent: AgentConfig = {
         ...current,
         name: body.name === undefined ? current.name : String(body.name).trim(),
         identity: body.identity === undefined ? current.identity : String(body.identity).trim(),
         soul: body.soul === undefined ? current.soul : String(body.soul).trim(),
         profileImage: body.profileImage === undefined ? current.profileImage : body.profileImage,
+        spriteFrames: nextSpriteFrames,
       };
 
       if (!nextAgent.name || !nextAgent.identity || !nextAgent.soul) {
@@ -128,6 +140,7 @@ export async function PATCH(
       name: result.agent.name,
       deskIndex: result.agent.deskIndex,
       spriteImage: result.agent.profileImage ?? null,
+      spriteFrames: result.agent.spriteFrames,
     });
     clawGlobal.__clawIo?.emit("agents:snapshot", { agents: agentStateStore.getAll() });
     await removeProfileImage(result.previousProfileImage);

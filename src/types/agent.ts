@@ -7,6 +7,7 @@ export interface AgentState {
   taskTitle?: string;
   deskIndex?: number;
   spriteImage?: string | null;
+  spriteFrames?: number;
 }
 
 export interface AgentConfig {
@@ -15,6 +16,7 @@ export interface AgentConfig {
   identity: string;
   soul: string;
   profileImage: string | null;
+  spriteFrames?: number;
   deskIndex: number;
   createdAt: string;
 }

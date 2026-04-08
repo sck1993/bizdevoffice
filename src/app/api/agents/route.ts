@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     identity?: string;
     soul?: string;
     profileImage?: string | null;
+    spriteFrames?: number;
   };
 
   try {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
   const identity = body.identity?.trim();
   const soul = body.soul?.trim();
   const profileImage = body.profileImage ?? null;
+  const spriteFrames = typeof body.spriteFrames === "number" && body.spriteFrames > 1 ? body.spriteFrames : undefined;
 
   if (!name || !identity || !soul) {
     return jsonError(400, "name, identity, and soul are required");
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
         identity,
         soul,
         profileImage,
+        spriteFrames,
         deskIndex,
         createdAt,
       };
@@ -124,6 +127,7 @@ export async function POST(request: Request) {
       state: "idle",
       deskIndex: agent.deskIndex,
       spriteImage: agent.profileImage ?? null,
+      spriteFrames: agent.spriteFrames,
     });
     clawGlobal.__clawIo?.emit("agents:snapshot", { agents: agentStateStore.getAll() });
 

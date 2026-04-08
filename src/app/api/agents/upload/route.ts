@@ -10,8 +10,11 @@ const ALLOWED_TYPES = new Map([
   ["image/jpeg", ".jpg"],
   ["image/png", ".png"],
   ["image/webp", ".webp"],
+  ["image/gif", ".gif"],
 ]);
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const MAX_GIF_FRAMES = 24;
+const FRAME_SIZE = 160;
 
 function jsonError(status: number, message: string) {
   return Response.json({ error: message }, { status });
@@ -25,9 +28,8 @@ export async function POST(request: Request) {
     return jsonError(400, "A file field is required");
   }
 
-  const ext = ALLOWED_TYPES.get(file.type);
-  if (!ext) {
-    return jsonError(400, "Only JPEG, PNG, and WEBP images are allowed");
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return jsonError(400, "Only JPEG, PNG, WEBP, and GIF images are allowed");
   }
 
   if (file.size > MAX_FILE_SIZE) {
@@ -36,15 +38,47 @@ export async function POST(request: Request) {
 
   const raw = Buffer.from(await file.arrayBuffer());
 
-  // 160×160으로 리사이징 (canvas 표시 크기 80px의 2배 — 계단 현상 완화)
+  if (file.type === "image/gif") {
+    const metadata = await sharp(raw, { animated: true }).metadata();
+    const totalFrames = metadata.pages ?? 1;
+    const frameCount = Math.min(totalFrames, MAX_GIF_FRAMES);
+
+    if (frameCount > 1) {
+      // 프레임 추출 후 수평 스프라이트시트로 합성
+      const frameBuffers: Buffer[] = [];
+      for (let i = 0; i < frameCount; i++) {
+        const frame = await sharp(raw, { page: i })
+          .resize(FRAME_SIZE, FRAME_SIZE, { fit: "cover", position: "centre" })
+          .png()
+          .toBuffer();
+        frameBuffers.push(frame);
+      }
+
+      const spritesheet = await sharp({
+        create: {
+          width: frameCount * FRAME_SIZE,
+          height: FRAME_SIZE,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+      })
+        .composite(frameBuffers.map((buf, i) => ({ input: buf, left: i * FRAME_SIZE, top: 0 })))
+        .png()
+        .toBuffer();
+
+      const filename = `${randomUUID()}_sheet.png`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), spritesheet);
+      return Response.json({ url: `/api/uploads/${filename}`, frames: frameCount });
+    }
+  }
+
+  // 정적 이미지 (GIF 단일 프레임 포함)
   const resized = await sharp(raw)
-    .resize(160, 160, { fit: "cover", position: "centre" })
+    .resize(FRAME_SIZE, FRAME_SIZE, { fit: "cover", position: "centre" })
     .png()
     .toBuffer();
 
   const filename = `${randomUUID()}.png`;
-  const destPath = path.join(UPLOADS_DIR, filename);
-
-  fs.writeFileSync(destPath, resized);
-  return Response.json({ url: `/api/uploads/${filename}` });
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), resized);
+  return Response.json({ url: `/api/uploads/${filename}`, frames: 1 });
 }

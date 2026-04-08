@@ -58,6 +58,7 @@ function AgentEditorModal({
   const [identity, setIdentity] = useState(initialAgent?.identity ?? "");
   const [soul, setSoul] = useState(initialAgent?.soul ?? "");
   const [profileImage, setProfileImage] = useState<string | null>(initialAgent?.profileImage ?? null);
+  const [spriteFrames, setSpriteFrames] = useState<number>(initialAgent?.spriteFrames ?? 1);
   const [staticAssets, setStaticAssets] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -96,6 +97,7 @@ function AgentEditorModal({
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Image upload failed");
       setProfileImage(data.url);
+      setSpriteFrames(data.frames ?? 1);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Image upload failed");
     } finally {
@@ -119,6 +121,7 @@ function AgentEditorModal({
             identity: trimmedIdentity,
             soul: trimmedSoul,
             profileImage,
+            spriteFrames: spriteFrames > 1 ? spriteFrames : undefined,
           }),
         },
       );
@@ -212,9 +215,9 @@ function AgentEditorModal({
                 {!profileImage ? "AI" : null}
               </div>
               <div style={{ display: "grid", gap: 8 }}>
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} />
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleFileChange} />
                 <div style={{ fontSize: 12, color: "rgba(228, 236, 255, 0.65)" }}>
-                  JPEG, PNG, WEBP. 최대 2MB.
+                  JPEG, PNG, WEBP, GIF. 최대 2MB.
                   {uploading ? " 업로드 중..." : ""}
                 </div>
                 {staticAssets.length > 0 ? (
@@ -225,7 +228,7 @@ function AgentEditorModal({
                         <button
                           key={url}
                           type="button"
-                          onClick={() => setProfileImage(selected ? null : url)}
+                          onClick={() => { setProfileImage(selected ? null : url); setSpriteFrames(1); }}
                           title={url.split("/").pop()}
                           style={{
                             width: 48,
@@ -248,7 +251,7 @@ function AgentEditorModal({
                 {profileImage ? (
                   <button
                     type="button"
-                    onClick={() => setProfileImage(null)}
+                    onClick={() => { setProfileImage(null); setSpriteFrames(1); }}
                     style={{
                       width: "fit-content",
                       borderRadius: 999,

@@ -88,7 +88,7 @@ export class OfficeScene extends Phaser.Scene {
         }
 
         existing.setAgentName(agent.name);
-        existing.setAgentImage(agent.spriteImage);
+        existing.setAgentImage(agent.spriteImage, agent.spriteFrames);
 
         let meetingSeatIndex = -1;
         if (agent.state === "meeting") {
@@ -1083,6 +1083,7 @@ export class OfficeScene extends Phaser.Scene {
       deskPos,
       deskIndex: state.deskIndex,
       imageUrl: state.spriteImage,
+      spriteFrames: state.spriteFrames,
     });
 
     this.agents.set(state.agentId, sprite);

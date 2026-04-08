@@ -44,7 +44,8 @@ function syncAgentsFromHealth(payload) {
       const name = fileAgent.name ?? a.name ?? agentId;
       const deskIndex = fileAgent.deskIndex ?? -1;
       const spriteImage = fileAgent.profileImage ?? null;
-      agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex, spriteImage });
+      const spriteFrames = fileAgent.spriteFrames;
+      agentStateStore.set(agentId, { agentId, name, state: "idle", deskIndex, spriteImage, spriteFrames });
       console.log("[gateway] registered agent from health:", agentId, name);
     }
   }
@@ -61,6 +62,7 @@ function initGateway(socketIo) {
       state: "idle",
       deskIndex: agent.deskIndex,
       spriteImage: agent.profileImage ?? null,
+      spriteFrames: agent.spriteFrames,
     });
   }
 

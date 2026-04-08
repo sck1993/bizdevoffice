@@ -12,6 +12,7 @@ interface AgentSpriteConfig {
   deskPos?: { x: number; y: number };
   deskIndex?: number;
   imageUrl?: string | null;
+  spriteFrames?: number;
 }
 
 // 라운지 존 배회 범위 (패딩 포함) — idle 상태에서만 사용
@@ -35,6 +36,8 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private speechText: Phaser.GameObjects.Text | null = null;
   private speechBuffer = "";
   private speechThrottleHandle: ReturnType<typeof setTimeout> | null = null;
+  private customImageUrl: string | null = null;
+  private customFrameCount = 1;
 
   constructor(config: AgentSpriteConfig) {
     const loungePos = config.loungeSeats[config.loungeIndex] ?? config.loungeSeats[0] ?? { x: 130, y: 520 };
@@ -55,7 +58,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
     // 커스텀 이미지 적용 (동적 로드)
     if (config.imageUrl) {
-      this.loadCustomTexture(config.agentId, config.imageUrl);
+      this.loadCustomTexture(config.agentId, config.imageUrl, config.spriteFrames ?? 1);
     }
 
     // 이름 라벨
@@ -115,21 +118,64 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.moveToTarget();
   }
 
-  private loadCustomTexture(agentId: string, imageUrl: string) {
+  private applyCustomTexture(key: string, frames: number) {
+    this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.setTexture(key);
+    this.setDisplaySize(80, 80);
+
+    if (frames > 1) {
+      const animKey = `custom_anim_${key}`;
+      if (!this.scene.anims.exists(animKey)) {
+        this.scene.anims.create({
+          key: animKey,
+          frames: this.scene.anims.generateFrameNumbers(key, { start: 0, end: frames - 1 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+      this.play(animKey, true);
+    }
+  }
+
+  private clearCustomAssets(removeTexture: boolean) {
+    const key = `sprite_${this.agentId}`;
+    const animKey = `custom_anim_${key}`;
+
+    this.stop();
+    if (this.scene.anims.exists(animKey)) {
+      this.scene.anims.remove(animKey);
+    }
+    if (removeTexture && this.scene.textures.exists(key)) {
+      this.scene.textures.remove(key);
+    }
+  }
+
+  private resetToDefaultTexture() {
+    this.clearCustomAssets(false);
+    this.customImageUrl = null;
+    this.customFrameCount = 1;
+    this.setTexture("character", 0);
+    this.setDisplaySize(96, 96);
+    this.playAnimation();
+  }
+
+  private loadCustomTexture(agentId: string, imageUrl: string, frames = 1) {
     const key = `sprite_${agentId}`;
+    this.customImageUrl = imageUrl;
+    this.customFrameCount = frames;
     if (this.scene.textures.exists(key)) {
-      this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.setTexture(key);
-      this.setDisplaySize(80, 80);
+      this.applyCustomTexture(key, frames);
       return;
     }
-    this.scene.load.image(key, imageUrl);
+    if (frames > 1) {
+      this.scene.load.spritesheet(key, imageUrl, { frameWidth: 160, frameHeight: 160 });
+    } else {
+      this.scene.load.image(key, imageUrl);
+    }
     const onComplete = () => {
       if (!this.scene || !this.active) return;
       if (this.scene.textures.exists(key)) {
-        this.scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-        this.setTexture(key);
-        this.setDisplaySize(80, 80);
+        this.applyCustomTexture(key, frames);
       } else {
         // 이 배치에 포함되지 않은 경우 — 다음 COMPLETE에서 재시도
         this.scene.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
@@ -144,9 +190,22 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.label.setText(name);
   }
 
-  setAgentImage(imageUrl: string | null | undefined) {
-    if (!imageUrl) return;
-    this.loadCustomTexture(this.agentId, imageUrl);
+  setAgentImage(imageUrl: string | null | undefined, frames?: number) {
+    if (!imageUrl) {
+      this.resetToDefaultTexture();
+      return;
+    }
+
+    const nextFrames = frames && frames > 1 ? frames : 1;
+    const key = `sprite_${this.agentId}`;
+    const imageChanged = this.customImageUrl !== imageUrl;
+    const framesChanged = this.customFrameCount !== nextFrames;
+
+    if ((imageChanged || framesChanged) && this.scene.textures.exists(key)) {
+      this.clearCustomAssets(true);
+    }
+
+    this.loadCustomTexture(this.agentId, imageUrl, nextFrames);
   }
 
   updatePositionRefs(
@@ -237,6 +296,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   private playAnimation() {
+    if (this.customImageUrl) return;
     const animKey = `agent_${this.currentStatus}`;
     if (this.anims.exists(animKey)) {
       this.play(animKey, true);
@@ -310,6 +370,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   override destroy(fromScene?: boolean) {
     this.stopWander();
     this.hideSpeechBubble();
+    this.clearCustomAssets(false);
     this.label.destroy();
     this.tooltip.destroy();
     super.destroy(fromScene);
