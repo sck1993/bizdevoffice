@@ -65,6 +65,13 @@ class MeetingBroker {
     }
 
     try {
+      if (this.running && this.turns.length === 0) {
+        const opened = await this._runOpeningTurn();
+        if (!opened) {
+          console.warn(`[meeting] ${this.meetingId} 시작 발언 생성 실패`);
+        }
+      }
+
       while (this.running && this.turns.length < this.maxTurns) {
         this._pollTurnNum++;
         const { raises } = await this.pollAgents();
@@ -162,6 +169,36 @@ class MeetingBroker {
     }
 
     return response.trim() || null;
+  }
+
+  async _runOpeningTurn() {
+    for (const participant of this.participants) {
+      if (!this.running) return false;
+
+      console.log(`[meeting] ${this.meetingId} 시작 발언자 시도: ${participant.name}`);
+      this.io.emit("meeting:turn-start", { agentId: participant.agentId, name: participant.name });
+      const response = await this.speakAgent(participant);
+
+      if (!response) {
+        this.io.emit("meeting:turn-end", {
+          agentId: participant.agentId,
+          name: participant.name,
+          content: "",
+        });
+        continue;
+      }
+
+      this.addTurn(participant.agentId, participant.name, response);
+      this.lastSpoke.set(participant.agentId, Date.now());
+      this.io.emit("meeting:turn-end", {
+        agentId: participant.agentId,
+        name: participant.name,
+        content: response,
+      });
+      return true;
+    }
+
+    return false;
   }
 
   // ── 발언자 선택 ─────────────────────────────────────────────────────────

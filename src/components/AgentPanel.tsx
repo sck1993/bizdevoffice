@@ -933,7 +933,9 @@ export function AgentPanel() {
       const { agentId, name: payloadName, content } = data as { agentId: string; name: string; content: string };
       // 페이로드의 name을 우선 사용, 없으면 ref 폴백
       const name = payloadName ?? currentSpeakerRef.current?.name ?? agentId;
-      setMeetingTranscript((prev) => [...prev, { agentId, name, content }]);
+      if (content.trim()) {
+        setMeetingTranscript((prev) => [...prev, { agentId, name, content }]);
+      }
       setCurrentSpeaker(null);
       currentSpeakerRef.current = null;
       setStreamingText("");

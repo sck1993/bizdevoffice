@@ -141,8 +141,19 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     status: AgentStatus,
     opts: { taskTitle?: string; meetingSeatIndex?: number } = {}
   ) {
+    const nextMeetingSeatIndex =
+      opts.meetingSeatIndex === undefined ? this.meetingSeatIndex : opts.meetingSeatIndex;
+    const nextTaskTitle = opts.taskTitle;
+    if (
+      this.currentStatus === status &&
+      this.taskTitle === nextTaskTitle &&
+      this.meetingSeatIndex === nextMeetingSeatIndex
+    ) {
+      return;
+    }
+
     this.currentStatus = status;
-    this.taskTitle = opts.taskTitle;
+    this.taskTitle = nextTaskTitle;
     if (opts.meetingSeatIndex !== undefined) {
       this.meetingSeatIndex = opts.meetingSeatIndex;
     }

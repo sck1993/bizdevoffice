@@ -45,40 +45,33 @@ export function GameWrapper() {
       socket = io();
 
       socket.on("connect", () => {
-        console.log("[socket] connected", socket?.id);
         setDisconnected(false);
         EventBus.emit("connection:restored");
       });
 
-      socket.on("disconnect", (reason) => {
-        console.log("[socket] disconnected", reason);
+      socket.on("disconnect", () => {
         setDisconnected(true);
         EventBus.emit("connection:lost");
       });
 
       socket.on("agents:snapshot", (data) => {
-        console.log("[socket] agents:snapshot", data);
         EventBus.emit("agents:snapshot", data);
       });
 
       socket.on("agent:state-changed", (data) => {
-        console.log("[socket] agent:state-changed", data);
         EventBus.emit("agent:state-changed", data);
       });
 
       socket.on("agent:removed", (data) => {
-        console.log("[socket] agent:removed", data);
         EventBus.emit("agent:removed", data);
       });
 
       socket.on("office:config", (data) => {
-        console.log("[socket] office:config", data);
         EventBus.emit("office:config", data);
       });
 
       for (const ev of ["meeting:turn-start", "meeting:speech-chunk", "meeting:turn-end", "meeting:ended", "meeting:error"] as const) {
         socket.on(ev, (data) => {
-          console.log(`[socket] ${ev}`, data);
           EventBus.emit(ev, data);
         });
       }
