@@ -9,6 +9,14 @@ function stableLoungeIndex(agentId: string, seatCount: number): number {
   return agentId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % Math.max(1, seatCount);
 }
 
+const INITIAL_LOUNGE_SPAWN = {
+  minX: 96,
+  maxX: 540,
+  minY: 432,
+  maxY: 560,
+  minDistance: 72,
+};
+
 
 // 소품 타일 크기 (tileCol/tileRow 는 좌상단 기준)
 const PROP_SIZE: Record<PropType, { w: number; h: number }> = {
@@ -1063,6 +1071,27 @@ export class OfficeScene extends Phaser.Scene {
     });
   }
 
+  private getInitialLoungeSpawnPosition(): { x: number; y: number } {
+    const bounds = INITIAL_LOUNGE_SPAWN;
+    const occupied = [...this.agents.values()].map((sprite) => ({ x: sprite.x, y: sprite.y }));
+
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const candidate = {
+        x: Phaser.Math.Between(bounds.minX, bounds.maxX),
+        y: Phaser.Math.Between(bounds.minY, bounds.maxY),
+      };
+      const overlaps = occupied.some(
+        (point) => Phaser.Math.Distance.Between(point.x, point.y, candidate.x, candidate.y) < bounds.minDistance,
+      );
+      if (!overlaps) return candidate;
+    }
+
+    return {
+      x: Phaser.Math.Between(bounds.minX, bounds.maxX),
+      y: Phaser.Math.Between(bounds.minY, bounds.maxY),
+    };
+  }
+
   // ── AGENT LIFECYCLE ─────────────────────────────────────────────────────────
 
   private spawnAgent(state: AgentState) {
@@ -1071,12 +1100,17 @@ export class OfficeScene extends Phaser.Scene {
     const { deskPositions, meetingSeats, loungeSeats } = this.getPropPositions();
     const deskPos =
       state.deskIndex != null && state.deskIndex >= 0 ? deskPositions[state.deskIndex] : undefined;
+    const shouldScatterInLounge = state.state !== "working";
+    const startPos = shouldScatterInLounge
+      ? this.getInitialLoungeSpawnPosition()
+      : deskPos;
 
     const sprite = new AgentSprite({
       scene: this,
       agentId: state.agentId,
       name: state.name,
       initialStatus: state.state,
+      startPos,
       loungeIndex: stableLoungeIndex(state.agentId, loungeSeats.length),
       loungeSeats,
       meetingSeats,
@@ -1087,6 +1121,10 @@ export class OfficeScene extends Phaser.Scene {
     });
 
     this.agents.set(state.agentId, sprite);
+
+    if (state.state === "idle") {
+      return;
+    }
 
     const meetingSeatIndex = state.state === "meeting" ? this.claimMeetingSeat(state.agentId) : -1;
     sprite.setAgentState(state.state, { taskTitle: state.taskTitle, meetingSeatIndex });

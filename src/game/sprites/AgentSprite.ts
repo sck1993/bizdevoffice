@@ -6,6 +6,7 @@ interface AgentSpriteConfig {
   agentId: string;
   name: string;
   initialStatus: AgentStatus;
+  startPos?: { x: number; y: number };
   loungeIndex: number;
   loungeSeats: { x: number; y: number }[];
   meetingSeats: { x: number; y: number }[];
@@ -41,7 +42,8 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
   constructor(config: AgentSpriteConfig) {
     const loungePos = config.loungeSeats[config.loungeIndex] ?? config.loungeSeats[0] ?? { x: 130, y: 520 };
-    super(config.scene, loungePos.x, loungePos.y, "character", 0);
+    const startPos = config.startPos ?? loungePos;
+    super(config.scene, startPos.x, startPos.y, "character", 0);
 
     this.agentId = config.agentId;
     this.agentName = config.name;
@@ -105,6 +107,15 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     }
   }
 
+  private faceToward(targetX: number) {
+    const deltaX = targetX - this.x;
+    if (deltaX > 1) {
+      this.setFlipX(true);
+    } else if (deltaX < -1) {
+      this.setFlipX(false);
+    }
+  }
+
   setAgentState(
     status: AgentStatus,
     opts: { taskTitle?: string; meetingSeatIndex?: number } = {}
@@ -133,7 +144,12 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
           repeat: -1,
         });
       }
-      this.play(animKey, true);
+      const currentAnimKey = this.anims.currentAnim?.key;
+      if (currentAnimKey !== animKey || !this.anims.isPlaying) {
+        this.play(animKey, true);
+      }
+    } else {
+      this.stop();
     }
   }
 
@@ -201,6 +217,10 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     const imageChanged = this.customImageUrl !== imageUrl;
     const framesChanged = this.customFrameCount !== nextFrames;
 
+    if (!imageChanged && !framesChanged && this.scene.textures.exists(key) && this.texture.key === key) {
+      return;
+    }
+
     if ((imageChanged || framesChanged) && this.scene.textures.exists(key)) {
       this.clearCustomAssets(true);
     }
@@ -247,6 +267,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
           b.minY, b.maxY,
         );
 
+        this.faceToward(tx);
         this.scene.tweens.add({
           targets: this,
           x: tx,
@@ -274,6 +295,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.scene.tweens.killTweensOf(this);
 
     const target = this.getTargetPosition(this.currentStatus);
+    this.faceToward(target.x);
     this.scene.tweens.add({
       targets: this,
       x: target.x,
