@@ -18,6 +18,25 @@ interface AgentSpriteConfig {
 
 // 라운지 존 배회 범위 (패딩 포함) — idle 상태에서만 사용
 const LOUNGE_BOUNDS = { minX: 64, maxX: 560, minY: 415, maxY: 578 };
+const SPEECH_BUBBLE = {
+  minWidth: 96,
+  maxWidth: 280,
+  minHeight: 40,
+  offsetY: -120,
+  paddingX: 12,
+  paddingY: 10,
+  lineHeight: 12,
+  fontSize: 10,
+  fontFamily: "Arial, sans-serif",
+  textColor: "#111111",
+  cornerRadius: 10,
+  tailHeight: 10,
+};
+
+type SpeechChar = {
+  char: string;
+  bold: boolean;
+};
 
 export class AgentSprite extends Phaser.GameObjects.Sprite {
   agentId: string;
@@ -34,7 +53,9 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private deskPos?: { x: number; y: number };
   private wanderTimer: Phaser.Time.TimerEvent | null = null;
   private speechBubble: Phaser.GameObjects.Container | null = null;
-  private speechText: Phaser.GameObjects.Text | null = null;
+  private speechBubbleBg: Phaser.GameObjects.Graphics | null = null;
+  private speechBubbleHeight = SPEECH_BUBBLE.minHeight;
+  private speechTextLayer: Phaser.GameObjects.Container | null = null;
   private speechBuffer = "";
   private speechThrottleHandle: ReturnType<typeof setTimeout> | null = null;
   private customImageUrl: string | null = null;
@@ -247,13 +268,13 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   private scheduleWander() {
-    if (this.currentStatus !== "idle") return;
+    if (!this.active || !this.scene?.time || this.currentStatus !== "idle") return;
 
     this.wanderTimer = this.scene.time.addEvent({
       delay: Phaser.Math.Between(2500, 6000),
       callback: () => {
         this.wanderTimer = null;
-        if (this.currentStatus !== "idle") return;
+        if (!this.active || !this.scene?.tweens || this.currentStatus !== "idle") return;
         const b = LOUNGE_BOUNDS;
         const TILE = 80;
 
@@ -275,11 +296,13 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
           duration: Phaser.Math.Between(900, 2000),
           ease: "Sine.easeInOut",
           onUpdate: () => {
+            if (!this.active) return;
             this.label.setPosition(this.x, this.y - 50);
             this.tooltip.setPosition(this.x, this.y - 70);
             this.updateBubblePosition();
           },
           onComplete: () => {
+            if (!this.active) return;
             this.label.setPosition(this.x, this.y - 50);
             this.tooltip.setPosition(this.x, this.y - 70);
             this.updateBubblePosition();
@@ -291,6 +314,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   }
 
   private moveToTarget() {
+    if (!this.active || !this.scene?.tweens) return;
     this.stopWander();
     this.scene.tweens.killTweensOf(this);
 
@@ -303,11 +327,13 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       duration: 1000,
       ease: "Power2",
       onUpdate: () => {
+        if (!this.active) return;
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
         this.updateBubblePosition();
       },
       onComplete: () => {
+        if (!this.active) return;
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
         this.updateBubblePosition();
@@ -330,27 +356,15 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   showSpeechBubble() {
     this.hideSpeechBubble();
     this.speechBuffer = "";
-
-    const BUBBLE_W = 220;
-    const BUBBLE_H = 60;
-    const OFFSET_Y = -120;
+    const { offsetY } = SPEECH_BUBBLE;
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0xffffff, 0.95);
-    bg.fillRoundedRect(-BUBBLE_W / 2, -BUBBLE_H / 2, BUBBLE_W, BUBBLE_H, 10);
-    bg.fillStyle(0xdddddd, 0.95);
-    bg.fillTriangle(-8, BUBBLE_H / 2, 8, BUBBLE_H / 2, 0, BUBBLE_H / 2 + 10);
-
-    const text = this.scene.add.text(0, 0, "...", {
-      fontSize: "12px",
-      color: "#111111",
-      wordWrap: { width: BUBBLE_W - 16 },
-      align: "left",
-    }).setOrigin(0.5);
-
-    this.speechText = text;
-    this.speechBubble = this.scene.add.container(this.x, this.y + OFFSET_Y, [bg, text]);
+    this.speechBubbleBg = bg;
+    this.speechBubbleHeight = SPEECH_BUBBLE.minHeight;
+    this.speechTextLayer = this.scene.add.container(0, 0);
+    this.speechBubble = this.scene.add.container(this.x, this.y + offsetY, [bg, this.speechTextLayer]);
     this.speechBubble.setDepth(15);
+    this.renderSpeechText("...");
   }
 
   appendSpeechChunk(chunk: string) {
@@ -359,9 +373,9 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     if (this.speechThrottleHandle !== null) return;
     this.speechThrottleHandle = setTimeout(() => {
       this.speechThrottleHandle = null;
-      if (this.speechText && this.speechBubble) {
-        const preview = this.speechBuffer.slice(-120); // 최근 120자만 표시
-        this.speechText.setText(preview);
+      if (this.speechTextLayer && this.speechBubble) {
+        const preview = this.speechBuffer.slice(-180);
+        this.renderSpeechText(preview);
       }
     }, 100);
   }
@@ -373,13 +387,150 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     }
     this.speechBubble?.destroy();
     this.speechBubble = null;
-    this.speechText = null;
+    this.speechBubbleBg = null;
+    this.speechBubbleHeight = SPEECH_BUBBLE.minHeight;
+    this.speechTextLayer = null;
     this.speechBuffer = "";
+  }
+
+  private parseSpeechChars(text: string): SpeechChar[] {
+    const chars: SpeechChar[] = [];
+    let index = 0;
+    let bold = false;
+
+    while (index < text.length) {
+      if (text.startsWith("**", index)) {
+        bold = !bold;
+        index += 2;
+        continue;
+      }
+
+      const codePoint = text.codePointAt(index);
+      if (codePoint === undefined) break;
+      const char = String.fromCodePoint(codePoint);
+      chars.push({ char, bold });
+      index += char.length;
+    }
+
+    return chars;
+  }
+
+  private measureSpeechText(text: string, bold: boolean) {
+    const context = this.scene.sys.game.canvas.getContext("2d");
+    if (!context) {
+      return Math.max(5, text.length * 6);
+    }
+
+    context.save();
+    context.font = `${bold ? "bold " : ""}${SPEECH_BUBBLE.fontSize}px ${SPEECH_BUBBLE.fontFamily}`;
+    const width = context.measureText(text).width;
+    context.restore();
+    return width;
+  }
+
+  private wrapSpeechText(text: string) {
+    const maxWidth = SPEECH_BUBBLE.maxWidth - SPEECH_BUBBLE.paddingX * 2;
+    const lines: SpeechChar[][] = [[]];
+    let lineWidth = 0;
+
+    for (const item of this.parseSpeechChars(text)) {
+      if (item.char === "\n") {
+        lines.push([]);
+        lineWidth = 0;
+        continue;
+      }
+
+      const charWidth = this.measureSpeechText(item.char, item.bold);
+      if (lineWidth + charWidth > maxWidth && lines[lines.length - 1].length > 0) {
+        lines.push([]);
+        lineWidth = 0;
+      }
+
+      lines[lines.length - 1].push(item);
+      lineWidth += charWidth;
+    }
+
+    return lines;
+  }
+
+  private renderSpeechText(text: string) {
+    if (!this.speechTextLayer || !this.speechBubbleBg) return;
+
+    this.speechTextLayer.removeAll(true);
+    const lines = this.wrapSpeechText(text);
+    const lineWidths = lines.map((line) =>
+      line.reduce((sum, item) => sum + this.measureSpeechText(item.char, item.bold), 0),
+    );
+    const contentWidth = lineWidths.reduce((max, width) => Math.max(max, width), 0);
+    const bubbleWidth = Phaser.Math.Clamp(
+      Math.ceil(contentWidth + SPEECH_BUBBLE.paddingX * 2),
+      SPEECH_BUBBLE.minWidth,
+      SPEECH_BUBBLE.maxWidth,
+    );
+    const contentHeight = Math.max(SPEECH_BUBBLE.lineHeight, lines.length * SPEECH_BUBBLE.lineHeight);
+    const bubbleHeight = Math.max(
+      SPEECH_BUBBLE.minHeight,
+      Math.ceil(contentHeight + SPEECH_BUBBLE.paddingY * 2),
+    );
+
+    this.speechBubbleHeight = bubbleHeight;
+    this.speechBubbleBg.clear();
+    this.speechBubbleBg.fillStyle(0xffffff, 0.95);
+    this.speechBubbleBg.fillRoundedRect(
+      -bubbleWidth / 2,
+      -bubbleHeight / 2,
+      bubbleWidth,
+      bubbleHeight,
+      SPEECH_BUBBLE.cornerRadius,
+    );
+    this.speechBubbleBg.fillStyle(0xdddddd, 0.95);
+    this.speechBubbleBg.fillTriangle(
+      -8,
+      bubbleHeight / 2,
+      8,
+      bubbleHeight / 2,
+      0,
+      bubbleHeight / 2 + SPEECH_BUBBLE.tailHeight,
+    );
+    this.speechTextLayer.setPosition(
+      -bubbleWidth / 2 + SPEECH_BUBBLE.paddingX,
+      -bubbleHeight / 2 + SPEECH_BUBBLE.paddingY,
+    );
+
+    lines.forEach((line, lineIndex) => {
+      let x = 0;
+      let buffer = "";
+      let currentBold = line[0]?.bold ?? false;
+
+      const flush = () => {
+        if (!buffer) return;
+        const textObject = this.scene.add.text(x, lineIndex * SPEECH_BUBBLE.lineHeight, buffer, {
+          fontSize: `${SPEECH_BUBBLE.fontSize}px`,
+          fontFamily: SPEECH_BUBBLE.fontFamily,
+          fontStyle: currentBold ? "bold" : "normal",
+          color: SPEECH_BUBBLE.textColor,
+          align: "left",
+        }).setOrigin(0, 0);
+        this.speechTextLayer?.add(textObject);
+        x += this.measureSpeechText(buffer, currentBold);
+        buffer = "";
+      };
+
+      for (const item of line) {
+        if (item.bold !== currentBold) {
+          flush();
+          currentBold = item.bold;
+        }
+        buffer += item.char;
+      }
+      flush();
+    });
   }
 
   private updateBubblePosition() {
     if (this.speechBubble) {
-      this.speechBubble.setPosition(this.x, this.y - 120);
+      const verticalAdjust = (this.speechBubbleHeight - SPEECH_BUBBLE.minHeight) / 2;
+      this.speechBubble.setPosition(this.x, this.y + SPEECH_BUBBLE.offsetY - verticalAdjust);
     }
   }
 
@@ -391,6 +542,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
 
   override destroy(fromScene?: boolean) {
     this.stopWander();
+    this.scene?.tweens?.killTweensOf(this);
     this.hideSpeechBubble();
     this.clearCustomAssets(false);
     this.label.destroy();

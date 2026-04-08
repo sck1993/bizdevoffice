@@ -34,8 +34,8 @@ class MeetingBroker {
     this.gateway = gateway;
     this.io = io;
 
-    this.maxTurns = opts.maxTurns ?? 20;
-    this.maxConsecutivePasses = opts.maxConsecutivePasses ?? 3;
+    this.maxTurns = opts.maxTurns ?? 12;
+    this.maxConsecutivePasses = opts.maxConsecutivePasses ?? 2;
 
     /** @type {Array<{agentId:string, name:string, content:string, timestamp:number}>} */
     this.turns = [];
@@ -197,7 +197,10 @@ class MeetingBroker {
       `[최근 대화]`,
       contextLines,
       "",
-      "위 회의에서 당신이 추가로 발언하고 싶다면 첫 줄에 'SPEAK', 발언하지 않을 것이면 'PASS'만 답하세요.",
+      "아래 기준에 따라 첫 줄에 'SPEAK' 또는 'PASS'만 답하세요.",
+      "- 기존 발언을 반복하지 말 것",
+      "- 새로운 정보, 반론, 결정 제안, 다음 액션이 있을 때만 SPEAK",
+      "- 이미 결론이 났거나 보탤 내용이 없으면 PASS",
     ].join("\n");
   }
 
@@ -212,7 +215,11 @@ class MeetingBroker {
       `[지금까지 대화]`,
       transcriptLines,
       "",
-      "위 회의에서 당신의 다음 발언을 간결하게 해주세요.",
+      "짧고 결론 중심으로 다음 발언만 하세요.",
+      "- 1~2문장으로만 답할 것",
+      "- 이미 나온 표현과 주장 반복 금지",
+      "- 가능하면 결정, 우선순위, 다음 액션 중 하나를 분명히 제안할 것",
+      "- 군더더기 설명, 인사, 서론은 생략할 것",
     ].join("\n");
   }
 

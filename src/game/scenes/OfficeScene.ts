@@ -76,7 +76,10 @@ export class OfficeScene extends Phaser.Scene {
     // ── 이벤트 핸들러 ────────────────────────────────────────────────────────
 
     const handleSnapshot = (data: unknown) => {
-      const { agents } = data as AgentsSnapshot;
+      const rawAgents = (data as AgentsSnapshot).agents;
+      const agents = Array.isArray(rawAgents)
+        ? rawAgents.filter((agent): agent is AgentState => typeof agent?.agentId === "string" && agent.agentId.length > 0)
+        : [];
       const snapshotIds = new Set(agents.map((a) => a.agentId));
 
       // 스냅샷에 없는 스프라이트 제거 (삭제된 에이전트 정리)
@@ -1095,6 +1098,7 @@ export class OfficeScene extends Phaser.Scene {
   // ── AGENT LIFECYCLE ─────────────────────────────────────────────────────────
 
   private spawnAgent(state: AgentState) {
+    if (!state?.agentId) return;
     if (this.agents.has(state.agentId)) return;
 
     const { deskPositions, meetingSeats, loungeSeats } = this.getPropPositions();

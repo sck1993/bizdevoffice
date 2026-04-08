@@ -8,6 +8,16 @@ if (!global.__clawGateway) {
 const gateway = global.__clawGateway;
 let io = null;
 
+function isAgentInActiveMeeting(agentId) {
+  const activeMeeting = global.__activeMeeting;
+  return Boolean(
+    agentId &&
+    activeMeeting &&
+    Array.isArray(activeMeeting.participantIds) &&
+    activeMeeting.participantIds.includes(agentId),
+  );
+}
+
 function isSelfReferentialGatewayUrl(url) {
   if (!url) return false;
 
@@ -68,6 +78,9 @@ function initGateway(socketIo) {
 
   // Agent state transitions from gateway events
   gateway.on("agent:working", ({ agentId, taskTitle }) => {
+    if (isAgentInActiveMeeting(agentId)) {
+      return;
+    }
     const prev = agentStateStore.get(agentId);
     agentStateStore.updateStatus(agentId, "working", taskTitle);
     // assistant 스트림 delta마다 이벤트가 오므로, 상태/taskTitle이 실제로 바뀔 때만 emit
@@ -77,6 +90,9 @@ function initGateway(socketIo) {
   });
 
   gateway.on("agent:idle", ({ agentId }) => {
+    if (isAgentInActiveMeeting(agentId)) {
+      return;
+    }
     agentStateStore.updateStatus(agentId, "idle");
     io?.emit("agent:state-changed", { agentId, state: "idle" });
   });

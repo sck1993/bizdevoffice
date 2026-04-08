@@ -8,7 +8,7 @@ const { MeetingBroker } = require("../../../../server/meeting-broker");
 
 const g = globalThis as typeof globalThis & {
   __clawIo?: { emit: (event: string, payload: unknown) => void };
-  __activeMeeting?: { meetingId: string; stop: () => void } | null;
+  __activeMeeting?: { meetingId: string; stop: () => void; participantIds: string[] } | null;
 };
 
 export async function POST(req: Request) {
@@ -48,7 +48,11 @@ export async function POST(req: Request) {
     io: g.__clawIo,
   });
 
-  g.__activeMeeting = { meetingId, stop: () => broker.stop() };
+  g.__activeMeeting = {
+    meetingId,
+    stop: () => broker.stop(),
+    participantIds: participants.map((participant) => participant.agentId),
+  };
 
   broker.run().finally(() => {
     if (g.__activeMeeting?.meetingId === meetingId) {

@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { jsonError } from "@/lib/route-utils";
 
 const g = globalThis as typeof globalThis & {
-  __activeMeeting?: { meetingId: string; stop: () => void } | null;
+  __activeMeeting?: { meetingId: string; stop: () => void; participantIds: string[] } | null;
 };
 
 export async function POST(req: Request) {
