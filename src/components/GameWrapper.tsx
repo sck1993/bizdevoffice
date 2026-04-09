@@ -38,7 +38,7 @@ export function GameWrapper() {
         },
         render: {
           antialias: true,
-          roundPixels: false,
+          roundPixels: true,
         },
       });
 

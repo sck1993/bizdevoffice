@@ -35,6 +35,7 @@ class MeetingBroker {
     this.io = io;
 
     this.maxTurns = opts.maxTurns ?? 12;
+    this.minTurns = opts.minTurns ?? 4;
     this.maxConsecutivePasses = opts.maxConsecutivePasses ?? 2;
 
     /** @type {Array<{agentId:string, name:string, content:string, timestamp:number}>} */
@@ -77,6 +78,11 @@ class MeetingBroker {
         const { raises } = await this.pollAgents();
 
         if (raises.length === 0) {
+          if (this.turns.length < this.minTurns) {
+            console.log(`[meeting] ${this.meetingId} 전원 PASS이지만 최소 턴(${this.minTurns}) 미달 → 계속`);
+            this.consecutivePasses = 0;
+            continue;
+          }
           this.consecutivePasses++;
           console.log(`[meeting] ${this.meetingId} 연속 PASS ${this.consecutivePasses}/${this.maxConsecutivePasses}`);
           if (this.consecutivePasses >= this.maxConsecutivePasses) break;
@@ -228,16 +234,20 @@ class MeetingBroker {
       ? recentTurns.map((t) => `${t.name}: ${t.content}`).join("\n")
       : "(아직 발언 없음)";
 
+    const turnNote = this.turns.length < this.minTurns
+      ? `(현재 ${this.turns.length}턴 — 아직 논의가 충분히 이루어지지 않았습니다)`
+      : `(현재 ${this.turns.length}턴)`;
+
     return [
       `[회의 주제] ${this.topic}`,
       "",
-      `[최근 대화]`,
+      `[최근 대화] ${turnNote}`,
       contextLines,
       "",
       "아래 기준에 따라 첫 줄에 'SPEAK' 또는 'PASS'만 답하세요.",
-      "- 기존 발언을 반복하지 말 것",
-      "- 새로운 정보, 반론, 결정 제안, 다음 액션이 있을 때만 SPEAK",
-      "- 이미 결론이 났거나 보탤 내용이 없으면 PASS",
+      "- 반론, 보완 의견, 구체적 질문, 다른 관점이 있으면 SPEAK",
+      "- 상대 발언에 단순 동의만 하거나 정말 보탤 말이 없을 때만 PASS",
+      "- 논의가 아직 충분하지 않다면 적극적으로 SPEAK",
     ].join("\n");
   }
 
@@ -246,17 +256,21 @@ class MeetingBroker {
       ? this.turns.map((t) => `${t.name}: ${t.content}`).join("\n")
       : "(첫 번째 발언입니다)";
 
+    const isTooEarly = this.turns.length < this.minTurns;
+
     return [
       `[회의 주제] ${this.topic}`,
       "",
       `[지금까지 대화]`,
       transcriptLines,
       "",
-      "짧고 결론 중심으로 다음 발언만 하세요.",
-      "- 1~2문장으로만 답할 것",
+      "다음 발언을 하세요.",
+      "- 2~4문장으로 답할 것",
       "- 이미 나온 표현과 주장 반복 금지",
-      "- 가능하면 결정, 우선순위, 다음 액션 중 하나를 분명히 제안할 것",
-      "- 군더더기 설명, 인사, 서론은 생략할 것",
+      isTooEarly
+        ? "- 아직 논의 초반이므로 질문, 반론, 다른 시각을 적극적으로 제시할 것"
+        : "- 결정, 우선순위, 다음 액션 중 하나를 제안할 것",
+      "- 인사, 서론, 군더더기 없이 바로 본론부터 시작할 것",
     ].join("\n");
   }
 

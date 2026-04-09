@@ -203,7 +203,7 @@ function AgentEditorModal({
                   height: 72,
                   borderRadius: 20,
                   background: profileImage
-                    ? `center / cover no-repeat url(${profileImage})`
+                    ? `0 0 / ${spriteFrames > 1 ? `${spriteFrames * 100}% 100%` : "cover"} no-repeat url(${profileImage})`
                     : "linear-gradient(135deg, rgba(71, 173, 255, 0.28), rgba(255, 150, 79, 0.3))",
                   border: "1px solid rgba(255, 255, 255, 0.12)",
                   display: "flex",
@@ -432,6 +432,7 @@ interface ChatAgent {
   agentId: string;
   name: string;
   profileImage?: string | null;
+  spriteFrames?: number;
   state: AgentState["state"];
   taskTitle?: string;
 }
@@ -523,7 +524,7 @@ function AgentChatView({ agent, onBack }: { agent: ChatAgent; onBack: () => void
     flexShrink: 0 as const,
     border: "1px solid rgba(255, 255, 255, 0.08)",
     background: agent.profileImage
-      ? `center / cover no-repeat url(${agent.profileImage})`
+      ? `0 0 / ${(agent.spriteFrames ?? 1) > 1 ? `${(agent.spriteFrames ?? 1) * 100}% 100%` : "cover"} no-repeat url(${agent.profileImage})`
       : "linear-gradient(135deg, rgba(80, 177, 255, 0.3), rgba(255, 163, 95, 0.28))",
     display: "flex",
     alignItems: "center",
@@ -1362,7 +1363,7 @@ export function AgentPanel() {
                       flexShrink: 0,
                       border: "1px solid rgba(255, 255, 255, 0.1)",
                       background: agent.profileImage
-                        ? `center / cover no-repeat url(${agent.profileImage})`
+                        ? `0 0 / ${(agent.spriteFrames ?? 1) > 1 ? `${(agent.spriteFrames ?? 1) * 100}% 100%` : "cover"} no-repeat url(${agent.profileImage})`
                         : "linear-gradient(135deg, rgba(80, 177, 255, 0.3), rgba(255, 163, 95, 0.28))",
                       display: "flex",
                       alignItems: "center",
