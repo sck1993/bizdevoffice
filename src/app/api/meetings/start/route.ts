@@ -32,10 +32,10 @@ export async function POST(req: Request) {
   if (!gateway.isConnected()) return jsonError(503, "OpenClaw 게이트웨이에 연결되지 않았습니다");
   if (!g.__clawIo) return jsonError(503, "Socket.io가 초기화되지 않았습니다");
 
-  const allAgents = loadAll() as Array<{ agentId: string; name: string }>;
+  const allAgents = loadAll() as Array<{ agentId: string; name: string; model?: string }>;
   const participants = agentIds
     .map((id) => allAgents.find((a) => a.agentId === id))
-    .filter((a): a is { agentId: string; name: string } => !!a);
+    .filter((a): a is { agentId: string; name: string; model?: string } => !!a);
 
   if (participants.length < 2) return jsonError(400, "유효한 에이전트가 2명 이상 필요합니다");
 

@@ -60,6 +60,8 @@ export async function POST(
       agentId,
       buildAgentChatSessionKey(agentId),
       prompt,
+      undefined,
+      agent.model,
     );
 
     try {

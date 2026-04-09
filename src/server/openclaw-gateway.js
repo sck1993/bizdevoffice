@@ -275,14 +275,20 @@ class OpenClawGateway extends EventEmitter {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  chatSend(agentId, baseSessionKey, message, onDelta) {
+  chatSend(agentId, baseSessionKey, message, onDelta, model) {
     const normalizedBase = baseSessionKey.startsWith("agent:")
       ? baseSessionKey
       : `agent:${agentId}:${baseSessionKey}`;
     const tail = this._sessionQueues.get(normalizedBase) ?? Promise.resolve();
     const request = tail.then(
-      () => this._executeChatSend(normalizedBase, message, onDelta),
-      () => this._executeChatSend(normalizedBase, message, onDelta),
+      async () => {
+        await this._applySessionModelOverride(normalizedBase, model);
+        return this._executeChatSend(normalizedBase, message, onDelta);
+      },
+      async () => {
+        await this._applySessionModelOverride(normalizedBase, model);
+        return this._executeChatSend(normalizedBase, message, onDelta);
+      },
     );
 
     this._sessionQueues.set(
@@ -291,6 +297,66 @@ class OpenClawGateway extends EventEmitter {
     );
 
     return request;
+  }
+
+  async _applySessionModelOverride(sessionKey, model) {
+    const normalizedModel =
+      typeof model === "string" && model.trim().length > 0
+        ? model.trim()
+        : null;
+
+    if (!normalizedModel) {
+      try {
+        await this.sessionsPatch(sessionKey, null);
+      } catch (error) {
+        if (this._isSessionMissingError(error)) return;
+        throw error;
+      }
+      return;
+    }
+
+    try {
+      await this.sessionsPatch(sessionKey, normalizedModel);
+      return;
+    } catch (patchError) {
+      try {
+        await this.sessionsCreate(sessionKey, normalizedModel);
+        return;
+      } catch (createError) {
+        if (this._isSessionAlreadyExistsError(createError)) {
+          await this.sessionsPatch(sessionKey, normalizedModel);
+          return;
+        }
+        if (!this._isSessionMissingError(patchError)) throw patchError;
+        throw createError;
+      }
+    }
+  }
+
+  _extractRpcErrorDetails(error) {
+    if (!(error instanceof Error)) return null;
+    try {
+      const parsed = JSON.parse(error.message);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  _extractRpcErrorMessage(error) {
+    if (!(error instanceof Error)) return "";
+    const details = this._extractRpcErrorDetails(error);
+    return typeof details?.message === "string" ? details.message : error.message;
+  }
+
+  _isSessionMissingError(error) {
+    return /session not found/i.test(this._extractRpcErrorMessage(error));
+  }
+
+  _isSessionAlreadyExistsError(error) {
+    return /(already exists|duplicate key|duplicate session|session exists)/i.test(
+      this._extractRpcErrorMessage(error),
+    );
   }
 
   _executeChatSend(normalizedBase, message, onDelta) {
@@ -529,6 +595,16 @@ class OpenClawGateway extends EventEmitter {
 
   async agentsDelete(agentId) {
     return this._rpcRequest("agents.delete", { agentId });
+  }
+
+  async sessionsCreate(key, model) {
+    const params = { key };
+    if (model) params.model = model;
+    return this._rpcRequest("sessions.create", params);
+  }
+
+  async sessionsPatch(key, model) {
+    return this._rpcRequest("sessions.patch", { key, model });
   }
 }
 

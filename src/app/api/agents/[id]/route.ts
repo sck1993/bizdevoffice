@@ -56,6 +56,7 @@ export async function PATCH(
     soul?: string;
     profileImage?: string | null;
     spriteFrames?: number;
+    model?: string | null;
   };
 
   try {
@@ -83,6 +84,13 @@ export async function PATCH(
             ? body.spriteFrames
             : undefined;
 
+      const nextModel =
+        body.model === undefined
+          ? current.model
+          : typeof body.model === "string" && body.model.trim()
+            ? body.model.trim()
+            : undefined;
+
       const nextAgent: AgentConfig = {
         ...current,
         name: body.name === undefined ? current.name : String(body.name).trim(),
@@ -90,6 +98,7 @@ export async function PATCH(
         soul: body.soul === undefined ? current.soul : String(body.soul).trim(),
         profileImage: body.profileImage === undefined ? current.profileImage : body.profileImage,
         spriteFrames: nextSpriteFrames,
+        model: nextModel,
       };
 
       if (!nextAgent.name || !nextAgent.identity || !nextAgent.soul) {

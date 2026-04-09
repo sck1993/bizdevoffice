@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     soul?: string;
     profileImage?: string | null;
     spriteFrames?: number;
+    model?: string;
   };
 
   try {
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
   const soul = body.soul?.trim();
   const profileImage = body.profileImage ?? null;
   const spriteFrames = typeof body.spriteFrames === "number" && body.spriteFrames > 1 ? body.spriteFrames : undefined;
+  const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : undefined;
 
   if (!name || !identity || !soul) {
     return jsonError(400, "name, identity, and soul are required");
@@ -113,6 +115,7 @@ export async function POST(request: Request) {
         soul,
         profileImage,
         spriteFrames,
+        model,
         deskIndex,
         createdAt,
       };

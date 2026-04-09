@@ -17,6 +17,7 @@ export interface AgentConfig {
   soul: string;
   profileImage: string | null;
   spriteFrames?: number;
+  model?: string;
   deskIndex: number;
   createdAt: string;
 }

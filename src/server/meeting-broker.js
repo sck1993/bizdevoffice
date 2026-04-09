@@ -79,7 +79,29 @@ class MeetingBroker {
 
         if (raises.length === 0) {
           if (this.turns.length < this.minTurns) {
-            console.log(`[meeting] ${this.meetingId} 전원 PASS이지만 최소 턴(${this.minTurns}) 미달 → 계속`);
+            const fallbackSpeaker = this.selectSpeaker(this.participants);
+            console.log(
+              `[meeting] ${this.meetingId} 전원 PASS이지만 최소 턴(${this.minTurns}) 미달 → ${fallbackSpeaker.name} 강제 발언`,
+            );
+            this.io.emit("meeting:turn-start", {
+              agentId: fallbackSpeaker.agentId,
+              name: fallbackSpeaker.name,
+            });
+            const fallbackResponse = await this.speakAgent(fallbackSpeaker);
+            if (!fallbackResponse) {
+              this.io.emit("meeting:turn-end", {
+                agentId: fallbackSpeaker.agentId,
+                name: fallbackSpeaker.name,
+                content: "",
+              });
+              break;
+            }
+            this.addTurn(fallbackSpeaker.agentId, fallbackSpeaker.name, fallbackResponse);
+            this.io.emit("meeting:turn-end", {
+              agentId: fallbackSpeaker.agentId,
+              name: fallbackSpeaker.name,
+              content: fallbackResponse,
+            });
             this.consecutivePasses = 0;
             continue;
           }
@@ -142,7 +164,7 @@ class MeetingBroker {
       await withTimeout(
         this.gateway.chatSend(participant.agentId, sessionKey, prompt, (chunk) => {
           response += chunk;
-        }),
+        }, participant.model),
         POLL_TIMEOUT_MS,
         null,
       );
@@ -166,7 +188,7 @@ class MeetingBroker {
           if (!this.running) return; // stop() 후 누출 차단
           response += chunk;
           this.io.emit("meeting:speech-chunk", { agentId: participant.agentId, chunk });
-        }),
+        }, participant.model),
         SPEAK_TIMEOUT_MS,
         null,
       );

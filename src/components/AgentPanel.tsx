@@ -59,6 +59,7 @@ function AgentEditorModal({
   const [soul, setSoul] = useState(initialAgent?.soul ?? "");
   const [profileImage, setProfileImage] = useState<string | null>(initialAgent?.profileImage ?? null);
   const [spriteFrames, setSpriteFrames] = useState<number>(initialAgent?.spriteFrames ?? 1);
+  const [model, setModel] = useState<string>(initialAgent?.model ?? "");
   const [staticAssets, setStaticAssets] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -122,6 +123,7 @@ function AgentEditorModal({
             soul: trimmedSoul,
             profileImage,
             spriteFrames: spriteFrames > 1 ? spriteFrames : undefined,
+            model: model || null,
           }),
         },
       );
@@ -324,6 +326,30 @@ function AgentEditorModal({
                 minHeight: 120,
               }}
             />
+          </label>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span style={{ fontSize: 13, color: "#c9d4eb" }}>AI 모델</span>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              style={{
+                borderRadius: 16,
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                background: "rgba(255, 255, 255, 0.04)",
+                color: "#f5f8ff",
+                padding: "11px 14px",
+                outline: "none",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              <option value="" style={{ background: "#131a2e" }}>기본값 (OpenClaw 설정 따름)</option>
+              <option value="openai-codex/gpt-5.4-mini" style={{ background: "#131a2e" }}>GPT-5.4 Mini</option>
+              <option value="openai-codex/gpt-5.4" style={{ background: "#131a2e" }}>GPT-5.4</option>
+              <option value="openrouter/google/gemma-4-26b-a4b-it" style={{ background: "#131a2e" }}>Gemma 4</option>
+              <option value="openrouter/auto" style={{ background: "#131a2e" }}>OpenRouter Auto</option>
+            </select>
           </label>
 
           {!gatewayConnected && !isEdit ? (
