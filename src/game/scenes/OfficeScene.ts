@@ -148,7 +148,9 @@ export class OfficeScene extends Phaser.Scene {
       if (this.isEditMode) return;
       const config = data as OfficeConfig;
       this.currentConfig = config;
-      this.meetingOccupied = config.props.filter((p) => p.type === "meeting_chair").map(() => null);
+      // 의자 수가 바뀌어도 기존 회의 좌석 배정을 보존 (config 갱신 시 점유 초기화 방지)
+      const chairCount = config.props.filter((p) => p.type === "meeting_chair").length;
+      this.meetingOccupied = Array.from({ length: chairCount }, (_, i) => this.meetingOccupied[i] ?? null);
       this.renderProps(config);
       this.updateAllSpritePositions();
     };
@@ -1105,7 +1107,7 @@ export class OfficeScene extends Phaser.Scene {
     const deskPos =
       state.deskIndex != null && state.deskIndex >= 0 ? deskPositions[state.deskIndex] : undefined;
     const shouldScatterInLounge = state.state !== "working";
-    const startPos = shouldScatterInLounge
+    const startPos = shouldScatterInLounge || !deskPos
       ? this.getInitialLoungeSpawnPosition()
       : deskPos;
 

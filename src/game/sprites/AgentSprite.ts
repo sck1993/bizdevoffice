@@ -268,7 +268,10 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.loungeSeats = loungeSeats;
     this.meetingSeats = meetingSeats;
     if (deskPos !== undefined) this.deskPos = deskPos;
-    this.moveToTarget();
+    // 회의 중인 에이전트는 config 갱신으로 이동하지 않음 (meeting:turn이 위치를 관리)
+    if (this.currentStatus !== "meeting") {
+      this.moveToTarget();
+    }
   }
 
   private stopWander() {
