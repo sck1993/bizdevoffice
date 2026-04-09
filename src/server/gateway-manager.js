@@ -91,6 +91,7 @@ function initGateway(socketIo) {
 
   gateway.on("agent:idle", ({ agentId }) => {
     if (isAgentInActiveMeeting(agentId)) {
+      console.log(`[gateway] agent:idle blocked (in meeting): ${agentId}`);
       return;
     }
     agentStateStore.updateStatus(agentId, "idle");
