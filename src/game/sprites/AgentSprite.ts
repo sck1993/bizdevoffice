@@ -121,8 +121,14 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     switch (state) {
       case "working":
         return this.deskPos ?? this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
-      case "meeting":
-        return this.meetingSeats[this.meetingSeatIndex] ?? this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
+      case "meeting": {
+        const seat = this.meetingSeats[this.meetingSeatIndex];
+        if (seat) return seat;
+        // meetingSeatIndex가 -1이거나 범위 초과 시 첫 번째 빈 좌석으로 폴백 (라운지 이동 방지)
+        const fallbackSeat = this.meetingSeats[0];
+        if (fallbackSeat) return fallbackSeat;
+        return this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
+      }
       default:
         return this.loungeSeats[this.loungeIndex] ?? { x: 130, y: 520 };
     }
