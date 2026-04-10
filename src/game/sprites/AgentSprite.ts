@@ -58,6 +58,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
   private speechTextLayer: Phaser.GameObjects.Container | null = null;
   private speechBuffer = "";
   private speechThrottleHandle: ReturnType<typeof setTimeout> | null = null;
+  private currentMoveTarget: { x: number; y: number } | null = null;
   private customImageUrl: string | null = null;
   private customFrameCount = 1;
 
@@ -152,8 +153,15 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     const nextTaskTitle = opts.taskTitle;
     const fallbackMeetingSeat =
       status === "meeting" && nextMeetingSeatIndex === -1 ? this.meetingSeats[0] : undefined;
+    const isAlreadyMovingToFallbackSeat = Boolean(
+      fallbackMeetingSeat &&
+      this.currentMoveTarget?.x === fallbackMeetingSeat.x &&
+      this.currentMoveTarget?.y === fallbackMeetingSeat.y
+    );
     const shouldForceMeetingFallbackMove = Boolean(
-      fallbackMeetingSeat && (this.x !== fallbackMeetingSeat.x || this.y !== fallbackMeetingSeat.y)
+      fallbackMeetingSeat &&
+      !isAlreadyMovingToFallbackSeat &&
+      (this.x !== fallbackMeetingSeat.x || this.y !== fallbackMeetingSeat.y)
     );
     if (
       this.currentStatus === status &&
@@ -345,6 +353,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     this.scene.tweens.killTweensOf(this);
 
     const target = this.getTargetPosition(this.currentStatus);
+    this.currentMoveTarget = target;
     this.faceToward(target.x);
     this.scene.tweens.add({
       targets: this,
@@ -360,6 +369,7 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
       },
       onComplete: () => {
         if (!this.active) return;
+        this.currentMoveTarget = null;
         this.label.setPosition(this.x, this.y - 50);
         this.tooltip.setPosition(this.x, this.y - 70);
         this.updateBubblePosition();
