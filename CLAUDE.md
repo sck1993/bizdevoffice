@@ -81,8 +81,10 @@ OpenClaw WebSocket
 - `maxConsecutivePasses` (기본 2) — 연속 PASS 횟수 초과 시 회의 종료
 
 ## AgentSprite 위치 규칙
-- `updateConfig()` 호출 시 meeting 상태인 에이전트는 `moveToTarget()` 호출하지 않음 (회의 좌석은 `meeting:turn` 이벤트가 관리)
-- meeting 상태에서 `meetingSeatIndex`가 -1이거나 범위 초과면 `meetingSeats[0]`으로 폴백 (라운지 이동 방지)
+- `updatePositionRefs()` 호출 시 meeting 상태인 에이전트는 `moveToTarget()` 호출하지 않음
+- 회의 좌석 위치는 `handleStateChanged()` / `handleSnapshot()`이 `claimMeetingSeat()`를 통해 관리 (`meeting:turn` 이벤트는 말풍선만 담당)
+- meeting 상태에서 `meetingSeatIndex`가 -1이면 `meetingSeats[0]`으로 폴백 이동 (라운지 이동 방지)
+- `spawnAgent()`에서 meeting 상태 에이전트는 라운지가 아닌 회의 좌석 위치를 초기 위치로 사용
 
 ## 공통 유틸
 - `src/lib/route-utils.ts` — API route에서 공유하는 `AgentRouteError`, `clawGlobal`, `jsonError`, `isTimeoutError`
