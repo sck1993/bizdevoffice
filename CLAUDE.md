@@ -4,7 +4,7 @@
 OpenClaw AI 에이전트 오케스트레이터의 하위 에이전트를 2D SD 캐릭터로 시각화하는 실시간 모니터링 웹앱.
 
 ## 기술 스택
-- Next.js 15 (App Router) + React 19
+- Next.js 16.x (App Router) + React 19
 - Phaser 3 (게임 렌더링, 브라우저 전용)
 - Socket.io 4.x (server.js 통합 커스텀 서버)
 - TypeScript + cross-env (Windows 호환)
@@ -45,6 +45,10 @@ OpenClaw WebSocket
 |------|------|------|
 | 영속 | `src/server/agent-file-store.js` | `data/agents.json` CRUD, `withLock` 뮤텍스, atomic write |
 | 런타임 | `src/server/agent-state-store.js` | `Map<agentId, AgentState>`, 서버 재시작 시 초기화 |
+| 영속 | `src/server/chat-file-store.js` | `data/chats/<agentId>.json` 채팅 이력, 최대 500개 |
+| 영속 | `src/server/office-file-store.js` | `data/office.json` 오피스 레이아웃(props 배치) |
+
+`src/server/socket-handlers.js` — 신규 소켓 접속 시 `office:config` → `agents:snapshot` 순서로 전송
 
 ## 데스크 슬롯
 - `DESK_SLOTS` (config.ts): 인덱스 0~3, 총 4개
@@ -57,6 +61,28 @@ OpenClaw WebSocket
 | idle | 0–3 | `agent_idle` |
 | working | 4–7 | `agent_working` |
 | meeting | 8–11 | `agent_meeting` |
+
+## AgentConfig 주요 필드
+`src/types/agent.ts`의 `AgentConfig`:
+- `model?: string` — 에이전트별 모델 오버라이드 (없으면 OpenClaw 기본 모델 사용)
+- `deskIndex: number` — -1이면 라운지
+- `spriteFrames?: number` — 스프라이트시트 총 프레임 수 (없으면 기본값)
+
+## 에이전트 모델 오버라이드
+- `AgentConfig.model` 필드로 에이전트별 LLM 모델 지정 가능
+- `openclaw-gateway.js`의 `chatSend(agentId, sessionKey, message, onDelta, model)` — 5번째 인자로 모델 전달
+- 내부적으로 `sessions.create` / `sessions.patch` RPC로 세션 모델을 동적 변경
+- `meeting-broker.js`도 `participant.model`을 `chatSend`에 전달
+
+## 미팅 브로커 설정
+`src/server/meeting-broker.js`의 MeetingBroker:
+- `maxTurns` (기본 12) — 최대 발언 턴
+- `minTurns` (기본 4) — 최소 발언 턴: 전원 PASS여도 이 수에 도달할 때까지 강제 발언
+- `maxConsecutivePasses` (기본 2) — 연속 PASS 횟수 초과 시 회의 종료
+
+## AgentSprite 위치 규칙
+- `updateConfig()` 호출 시 meeting 상태인 에이전트는 `moveToTarget()` 호출하지 않음 (회의 좌석은 `meeting:turn` 이벤트가 관리)
+- meeting 상태에서 `meetingSeatIndex`가 -1이거나 범위 초과면 `meetingSeats[0]`으로 폴백 (라운지 이동 방지)
 
 ## 공통 유틸
 - `src/lib/route-utils.ts` — API route에서 공유하는 `AgentRouteError`, `clawGlobal`, `jsonError`, `isTimeoutError`

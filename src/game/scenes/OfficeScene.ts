@@ -1106,10 +1106,14 @@ export class OfficeScene extends Phaser.Scene {
     const { deskPositions, meetingSeats, loungeSeats } = this.getPropPositions();
     const deskPos =
       state.deskIndex != null && state.deskIndex >= 0 ? deskPositions[state.deskIndex] : undefined;
-    const shouldScatterInLounge = state.state !== "working";
-    const startPos = shouldScatterInLounge || !deskPos
-      ? this.getInitialLoungeSpawnPosition()
-      : deskPos;
+    const meetingSeatIndex = state.state === "meeting" ? this.claimMeetingSeat(state.agentId) : -1;
+    const claimedMeetingSeat = meetingSeatIndex >= 0 ? meetingSeats[meetingSeatIndex] : undefined;
+    const shouldScatterInLounge = state.state !== "working" && state.state !== "meeting";
+    const startPos = state.state === "meeting"
+      ? claimedMeetingSeat ?? meetingSeats[0] ?? deskPos ?? this.getInitialLoungeSpawnPosition()
+      : shouldScatterInLounge || !deskPos
+        ? this.getInitialLoungeSpawnPosition()
+        : deskPos;
 
     const sprite = new AgentSprite({
       scene: this,
@@ -1132,7 +1136,6 @@ export class OfficeScene extends Phaser.Scene {
       return;
     }
 
-    const meetingSeatIndex = state.state === "meeting" ? this.claimMeetingSeat(state.agentId) : -1;
     sprite.setAgentState(state.state, { taskTitle: state.taskTitle, meetingSeatIndex });
   }
 

@@ -150,10 +150,16 @@ export class AgentSprite extends Phaser.GameObjects.Sprite {
     const nextMeetingSeatIndex =
       opts.meetingSeatIndex === undefined ? this.meetingSeatIndex : opts.meetingSeatIndex;
     const nextTaskTitle = opts.taskTitle;
+    const fallbackMeetingSeat =
+      status === "meeting" && nextMeetingSeatIndex === -1 ? this.meetingSeats[0] : undefined;
+    const shouldForceMeetingFallbackMove = Boolean(
+      fallbackMeetingSeat && (this.x !== fallbackMeetingSeat.x || this.y !== fallbackMeetingSeat.y)
+    );
     if (
       this.currentStatus === status &&
       this.taskTitle === nextTaskTitle &&
-      this.meetingSeatIndex === nextMeetingSeatIndex
+      this.meetingSeatIndex === nextMeetingSeatIndex &&
+      !shouldForceMeetingFallbackMove
     ) {
       return;
     }
